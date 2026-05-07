@@ -8,8 +8,8 @@ Este proyecto forma parte de un Trabajo Practico Integrador de DevOps. La API fu
 
 ## Stack
 
-- Java 21
-- Spring Boot 3.5.6
+- Java 25
+- Spring Boot 4.0.6
 - Spring Web / MVC
 - Spring Data JPA
 - H2 Database para MVP
@@ -37,6 +37,32 @@ http://localhost:8080
 
 ```powershell
 .\mvnw.cmd clean test
+```
+
+## Docker
+
+Construir la imagen:
+
+```powershell
+docker build -t promotrack-api .
+```
+
+Ejecutar el contenedor:
+
+```powershell
+docker run -p 8080:8080 promotrack-api
+```
+
+Validar que el contenedor responde:
+
+```powershell
+Invoke-RestMethod http://localhost:8080/actuator/health
+```
+
+Tambien se puede abrir Swagger UI en el navegador:
+
+```text
+http://localhost:8080/swagger-ui/index.html
 ```
 
 ## URLs Utiles
@@ -90,7 +116,6 @@ La configuracion actual:
 
 ## Proximos Pasos
 
-- Crear `Dockerfile`.
 - Crear `docker-compose.yml`.
 - Agregar PostgreSQL para entorno containerizado.
 - Configurar GitHub Actions para ejecutar tests y build.
