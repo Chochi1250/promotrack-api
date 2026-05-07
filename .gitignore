@@ -1,0 +1,69 @@
+# Build output
+target/
+build/
+out/
+dist/
+
+# Keep nested target/build folders if they ever appear as source fixtures
+!**/src/main/**/target/
+!**/src/test/**/target/
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+# Maven wrapper must be versioned
+!.mvn/
+!.mvn/wrapper/
+!.mvn/wrapper/maven-wrapper.properties
+!.mvn/wrapper/maven-wrapper.jar
+!mvnw
+!mvnw.cmd
+
+# Logs and runtime files
+*.log
+logs/
+*.pid
+*.tmp
+*.temp
+*.bak
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.jks
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Spring Tool Suite / Eclipse
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings/
+.springBeans
+.sts4-cache/
+
+# IntelliJ IDEA
+.idea/
+*.iws
+*.iml
+*.ipr
+
+# NetBeans
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+
+# VS Code
+.vscode/
+
+# Generated Initializr notes
+HELP.md

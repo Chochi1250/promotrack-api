@@ -1,0 +1,20 @@
+spring:
+  application:
+    name: promotrack-api
+  profiles:
+    active: dev
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  info:
+    env:
+      enabled: true
+
+info:
+  app:
+    name: PromoTrack API
+    description: API REST para gestionar ofertas de supermercados argentinos
+    version: 0.0.1-SNAPSHOT
