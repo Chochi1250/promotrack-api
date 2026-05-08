@@ -65,6 +65,39 @@ Tambien se puede abrir Swagger UI en el navegador:
 http://localhost:8080/swagger-ui/index.html
 ```
 
+## Docker Compose
+
+Construir y levantar la API:
+
+```powershell
+docker compose up --build
+```
+
+Detener y remover el contenedor:
+
+```powershell
+docker compose down
+```
+
+Validar health:
+
+```powershell
+docker compose ps
+Invoke-RestMethod http://localhost:8080/actuator/health
+```
+
+Tambien se puede abrir en el navegador:
+
+```text
+http://localhost:8080/actuator/health
+```
+
+Abrir Swagger UI:
+
+```text
+http://localhost:8080/swagger-ui/index.html
+```
+
 ## URLs Utiles
 
 - Swagger UI: `http://localhost:8080/swagger-ui/index.html`
@@ -116,7 +149,6 @@ La configuracion actual:
 
 ## Proximos Pasos
 
-- Crear `docker-compose.yml`.
 - Agregar PostgreSQL para entorno containerizado.
 - Configurar GitHub Actions para ejecutar tests y build.
 - Publicar imagen Docker en un registry.
