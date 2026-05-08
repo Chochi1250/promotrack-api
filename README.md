@@ -39,6 +39,16 @@ http://localhost:8080
 .\mvnw.cmd clean test
 ```
 
+## Integracion Continua
+
+El proyecto incluye un workflow de GitHub Actions en `.github/workflows/ci.yml`.
+
+La CI se ejecuta en `push` y `pull_request` hacia `develop` y `main`. Valida:
+
+- Tests con Maven Wrapper.
+- Build del paquete con Maven.
+- Construccion de la imagen Docker sin publicarla.
+
 ## Docker
 
 Construir la imagen:
@@ -150,6 +160,5 @@ La configuracion actual:
 ## Proximos Pasos
 
 - Agregar PostgreSQL para entorno containerizado.
-- Configurar GitHub Actions para ejecutar tests y build.
 - Publicar imagen Docker en un registry.
 - Ampliar monitoreo con Actuator y metricas.
