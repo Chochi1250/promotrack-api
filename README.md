@@ -108,10 +108,24 @@ Abrir Swagger UI:
 http://localhost:8080/swagger-ui/index.html
 ```
 
+## Monitoreo
+
+El proyecto usa Spring Boot Actuator con una exposicion minima y explicita para monitoreo basico:
+
+- `GET /actuator/health`
+- `GET /actuator/info`
+- `GET /actuator/metrics`
+
+No se exponen endpoints sensibles como `env`, `beans`, `heapdump`, `threaddump`, `configprops`, `shutdown` o `loggers`.
+
+La documentacion completa del baseline de monitoreo esta en `docs/monitoring.md`.
+
 ## URLs Utiles
 
 - Swagger UI: `http://localhost:8080/swagger-ui/index.html`
 - Actuator Health: `http://localhost:8080/actuator/health`
+- Actuator Info: `http://localhost:8080/actuator/info`
+- Actuator Metrics: `http://localhost:8080/actuator/metrics`
 - H2 Console: `http://localhost:8080/h2-console`
 
 Credenciales H2 en perfil `dev`:
@@ -155,10 +169,10 @@ La configuracion actual:
 - Habilita consola H2 en `/h2-console`.
 - Ejecuta `data.sql` al iniciar.
 - Usa modo compatible con PostgreSQL para facilitar una futura migracion.
-- Expone Actuator en `/actuator/health`.
+- Expone Actuator en `/actuator/health`, `/actuator/info` y `/actuator/metrics`.
 
 ## Proximos Pasos
 
 - Agregar PostgreSQL para entorno containerizado.
 - Publicar imagen Docker en un registry.
-- Ampliar monitoreo con Actuator y metricas.
+- Evaluar New Relic One como evolucion opcional de monitoreo.
