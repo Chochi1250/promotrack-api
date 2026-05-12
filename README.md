@@ -15,6 +15,9 @@ Este proyecto forma parte de un Trabajo Practico Integrador de DevOps. La API fu
 - H2 Database para MVP
 - Bean Validation
 - Spring Boot Actuator
+- Micrometer Prometheus Registry
+- Prometheus
+- Grafana
 - Springdoc OpenAPI / Swagger UI
 - JUnit, Mockito y MockMvc
 - Maven Wrapper
@@ -77,7 +80,7 @@ http://localhost:8080/swagger-ui/index.html
 
 ## Docker Compose
 
-Construir y levantar la API:
+Construir y levantar la API con Prometheus y Grafana:
 
 ```powershell
 docker compose up --build
@@ -94,6 +97,7 @@ Validar health:
 ```powershell
 docker compose ps
 Invoke-RestMethod http://localhost:8080/actuator/health
+Invoke-RestMethod http://localhost:8080/actuator/prometheus
 ```
 
 Tambien se puede abrir en el navegador:
@@ -110,22 +114,70 @@ http://localhost:8080/swagger-ui/index.html
 
 ## Monitoreo
 
-El proyecto usa Spring Boot Actuator con una exposicion minima y explicita para monitoreo basico:
+El proyecto usa Spring Boot Actuator, Micrometer, Prometheus y Grafana con una exposicion minima y explicita para monitoreo basico local:
 
 - `GET /actuator/health`
 - `GET /actuator/info`
 - `GET /actuator/metrics`
+- `GET /actuator/prometheus`
 
 No se exponen endpoints sensibles como `env`, `beans`, `heapdump`, `threaddump`, `configprops`, `shutdown` o `loggers`.
 
-La documentacion completa del baseline de monitoreo esta en `docs/monitoring.md`.
+Prometheus scrapea la API desde `monitoring/prometheus.yml` usando el target interno de Docker `api:8080`. Grafana se usa como representacion visual de las metricas y queda conectado a Prometheus mediante provisioning local.
+
+Prometheus:
+
+- UI: `http://localhost:9090`
+- Targets: `http://localhost:9090/targets`
+- El job `promotrack-api` debe aparecer como `UP`.
+
+Grafana:
+
+- UI: `http://localhost:3000`
+- Datasource Prometheus provisionado automaticamente.
+- Dashboard provisionado desde `monitoring/grafana/promotrack-dashboard.json`.
+- Si hiciera falta importarlo manualmente: abrir Grafana, ir a Dashboards, New, Import y cargar `monitoring/grafana/promotrack-dashboard.json`.
+
+Generar trafico de demo:
+
+```powershell
+.\scripts\simulate-traffic.ps1
+```
+
+Opcionalmente se puede ajustar la cantidad de rondas:
+
+```powershell
+.\scripts\simulate-traffic.ps1 -Rounds 20 -DelayMilliseconds 100
+```
+
+Metricas utiles para observar:
+
+- requests HTTP,
+- errores 4xx/5xx,
+- latencia,
+- memoria JVM,
+- CPU/proceso.
+
+PromQL sugerido:
+
+```promql
+sum(rate(http_server_requests_seconds_count[1m])) * 60
+sum(rate(http_server_requests_seconds_count{status=~"5.."}[1m])) * 60
+sum(rate(http_server_requests_seconds_sum[1m])) / sum(rate(http_server_requests_seconds_count[1m]))
+```
+
+La documentacion completa del monitoreo local esta en `docs/monitoring.md`.
 
 ## URLs Utiles
 
+- API: `http://localhost:8080`
 - Swagger UI: `http://localhost:8080/swagger-ui/index.html`
 - Actuator Health: `http://localhost:8080/actuator/health`
 - Actuator Info: `http://localhost:8080/actuator/info`
 - Actuator Metrics: `http://localhost:8080/actuator/metrics`
+- Actuator Prometheus: `http://localhost:8080/actuator/prometheus`
+- Prometheus UI: `http://localhost:9090`
+- Grafana UI: `http://localhost:3000`
 - H2 Console: `http://localhost:8080/h2-console`
 
 Credenciales H2 en perfil `dev`:
@@ -169,7 +221,7 @@ La configuracion actual:
 - Habilita consola H2 en `/h2-console`.
 - Ejecuta `data.sql` al iniciar.
 - Usa modo compatible con PostgreSQL para facilitar una futura migracion.
-- Expone Actuator en `/actuator/health`, `/actuator/info` y `/actuator/metrics`.
+- Expone Actuator en `/actuator/health`, `/actuator/info`, `/actuator/metrics` y `/actuator/prometheus`.
 
 ## Proximos Pasos
 

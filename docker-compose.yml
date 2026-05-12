@@ -15,3 +15,29 @@ services:
       timeout: 5s
       retries: 5
       start_period: 30s
+
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    container_name: promotrack-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    depends_on:
+      api:
+        condition: service_healthy
+
+  grafana:
+    image: grafana/grafana-oss:11.3.1
+    container_name: promotrack-grafana
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/promotrack-dashboard.json:/var/lib/grafana/dashboards/promotrack-dashboard.json:ro
+    environment:
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    depends_on:
+      - prometheus
