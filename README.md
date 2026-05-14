@@ -52,6 +52,42 @@ La CI se ejecuta en `push` y `pull_request` hacia `develop` y `main`. Valida:
 - Build del paquete con Maven.
 - Construccion de la imagen Docker sin publicarla.
 
+## Publicacion de Imagen Docker en GHCR
+
+La publicacion de imagen Docker permite construir la API como una imagen versionada y subirla a un registry para que pueda descargarse y ejecutarse desde otros entornos.
+
+Este proyecto publica la imagen automaticamente en GitHub Container Registry mediante el workflow `.github/workflows/docker-publish.yml`. El workflow corre en `push` a `develop`, `push` a `main` y tambien puede ejecutarse manualmente con `workflow_dispatch`. No publica imagenes desde `pull_request`.
+
+La imagen queda publicada en:
+
+```text
+ghcr.io/<owner>/promotrack-api
+```
+
+Tags publicados:
+
+- `develop`: cuando el workflow corre sobre la rama `develop`.
+- `latest`: cuando el workflow corre sobre la rama `main`.
+- `<sha>`: commit SHA corto para trazabilidad.
+
+Descargar la imagen publicada:
+
+```powershell
+docker pull ghcr.io/<owner>/promotrack-api:latest
+```
+
+Ejecutar la imagen publicada:
+
+```powershell
+docker run --rm -p 8080:8080 ghcr.io/<owner>/promotrack-api:latest
+```
+
+Validar que la API responde:
+
+```powershell
+Invoke-RestMethod http://localhost:8080/actuator/health
+```
+
 ## Docker
 
 Construir la imagen:
