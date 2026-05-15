@@ -2,17 +2,26 @@ package com.promotrack.api.exception;
 
 import com.promotrack.api.dto.response.ErrorResponse;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.ConstraintViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.validation.FieldError;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.validation.FieldError;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.servlet.NoHandlerFoundException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.time.LocalDateTime;
+import java.util.Comparator;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeMap;
 import java.util.stream.Collectors;
 
 @ControllerAdvice
@@ -23,7 +32,22 @@ public class GlobalExceptionHandler {
             ResourceNotFoundException exception,
             HttpServletRequest request
     ) {
-        return buildResponse(HttpStatus.NOT_FOUND, exception.getMessage(), request.getRequestURI());
+        return buildResponse(
+                HttpStatus.NOT_FOUND,
+                "Resource not found",
+                exception.getMessage(),
+                request.getRequestURI()
+        );
+    }
+
+    @ExceptionHandler({NoResourceFoundException.class, NoHandlerFoundException.class})
+    public ResponseEntity<ErrorResponse> handleRouteNotFound(Exception exception, HttpServletRequest request) {
+        return buildResponse(
+                HttpStatus.NOT_FOUND,
+                "Route not found",
+                "No endpoint is available for the requested path.",
+                request.getRequestURI()
+        );
     }
 
     @ExceptionHandler(InvalidDateRangeException.class)
@@ -31,7 +55,12 @@ public class GlobalExceptionHandler {
             InvalidDateRangeException exception,
             HttpServletRequest request
     ) {
-        return buildResponse(HttpStatus.BAD_REQUEST, exception.getMessage(), request.getRequestURI());
+        return buildResponse(
+                HttpStatus.BAD_REQUEST,
+                "Invalid request",
+                exception.getMessage(),
+                request.getRequestURI()
+        );
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -39,15 +68,46 @@ public class GlobalExceptionHandler {
             MethodArgumentNotValidException exception,
             HttpServletRequest request
     ) {
-        String message = exception.getBindingResult()
+        Map<String, String> errors = exception.getBindingResult()
                 .getFieldErrors()
                 .stream()
-                .map(this::formatFieldError)
-                .collect(Collectors.joining("; "));
-        if (!message.isBlank()) {
-            message = "Validation failed: " + message;
-        }
-        return buildResponse(HttpStatus.BAD_REQUEST, message, request.getRequestURI());
+                .sorted(Comparator.comparing(FieldError::getField))
+                .collect(Collectors.toMap(
+                        FieldError::getField,
+                        this::resolveFieldErrorMessage,
+                        (first, second) -> first,
+                        TreeMap::new
+                ));
+        return buildResponse(
+                HttpStatus.BAD_REQUEST,
+                "Validation failed",
+                "One or more fields have invalid values.",
+                request.getRequestURI(),
+                errors
+        );
+    }
+
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<ErrorResponse> handleConstraintViolation(
+            ConstraintViolationException exception,
+            HttpServletRequest request
+    ) {
+        Map<String, String> errors = exception.getConstraintViolations()
+                .stream()
+                .sorted(Comparator.comparing(violation -> violation.getPropertyPath().toString()))
+                .collect(Collectors.toMap(
+                        violation -> violation.getPropertyPath().toString(),
+                        ConstraintViolation::getMessage,
+                        (first, second) -> first,
+                        TreeMap::new
+                ));
+        return buildResponse(
+                HttpStatus.BAD_REQUEST,
+                "Validation failed",
+                "One or more parameters have invalid values.",
+                request.getRequestURI(),
+                errors
+        );
     }
 
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
@@ -55,8 +115,8 @@ public class GlobalExceptionHandler {
             MethodArgumentTypeMismatchException exception,
             HttpServletRequest request
     ) {
-        String message = "Invalid value for parameter: " + exception.getName();
-        return buildResponse(HttpStatus.BAD_REQUEST, message, request.getRequestURI());
+        String detail = "Invalid value for parameter: " + exception.getName();
+        return buildResponse(HttpStatus.BAD_REQUEST, "Invalid request parameter", detail, request.getRequestURI());
     }
 
     @ExceptionHandler(MissingServletRequestParameterException.class)
@@ -64,8 +124,8 @@ public class GlobalExceptionHandler {
             MissingServletRequestParameterException exception,
             HttpServletRequest request
     ) {
-        String message = "Missing required parameter: " + exception.getParameterName();
-        return buildResponse(HttpStatus.BAD_REQUEST, message, request.getRequestURI());
+        String detail = "Missing required parameter: " + exception.getParameterName();
+        return buildResponse(HttpStatus.BAD_REQUEST, "Missing request parameter", detail, request.getRequestURI());
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
@@ -73,25 +133,63 @@ public class GlobalExceptionHandler {
             HttpMessageNotReadableException exception,
             HttpServletRequest request
     ) {
-        return buildResponse(HttpStatus.BAD_REQUEST, "Invalid request body", request.getRequestURI());
+        return buildResponse(
+                HttpStatus.BAD_REQUEST,
+                "Invalid request body",
+                "Request body is missing or malformed.",
+                request.getRequestURI()
+        );
+    }
+
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<ErrorResponse> handleMethodNotSupported(
+            HttpRequestMethodNotSupportedException exception,
+            HttpServletRequest request
+    ) {
+        Set<org.springframework.http.HttpMethod> supportedHttpMethods = exception.getSupportedHttpMethods();
+        String supportedMethods = supportedHttpMethods == null ? "" : supportedHttpMethods
+                .stream()
+                .map(String::valueOf)
+                .sorted()
+                .collect(Collectors.joining(", "));
+        String detail = supportedMethods.isBlank()
+                ? "HTTP method is not supported for this endpoint."
+                : "HTTP method is not supported for this endpoint. Supported methods: " + supportedMethods + ".";
+        return buildResponse(HttpStatus.METHOD_NOT_ALLOWED, "Method not allowed", detail, request.getRequestURI());
     }
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleUnexpected(Exception exception, HttpServletRequest request) {
-        return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, "Unexpected error", request.getRequestURI());
+        return buildResponse(
+                HttpStatus.INTERNAL_SERVER_ERROR,
+                "Unexpected error",
+                "An unexpected error occurred.",
+                request.getRequestURI()
+        );
     }
 
-    private String formatFieldError(FieldError error) {
-        return error.getField() + ": " + error.getDefaultMessage();
+    private String resolveFieldErrorMessage(FieldError error) {
+        return error.getDefaultMessage() != null ? error.getDefaultMessage() : "Invalid value";
     }
 
-    private ResponseEntity<ErrorResponse> buildResponse(HttpStatus status, String message, String path) {
+    private ResponseEntity<ErrorResponse> buildResponse(HttpStatus status, String title, String detail, String path) {
+        return buildResponse(status, title, detail, path, Map.of());
+    }
+
+    private ResponseEntity<ErrorResponse> buildResponse(
+            HttpStatus status,
+            String title,
+            String detail,
+            String path,
+            Map<String, String> errors
+    ) {
         ErrorResponse response = new ErrorResponse(
                 LocalDateTime.now(),
                 status.value(),
-                status.getReasonPhrase(),
-                message,
-                path
+                title,
+                detail,
+                path,
+                errors
         );
         return ResponseEntity.status(status).body(response);
     }
