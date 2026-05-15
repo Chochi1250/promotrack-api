@@ -90,7 +90,7 @@ for ($round = 1; $round -le $Rounds; $round++) {
         }
     }
 
-    if ($IncludeServerErrors -and $round % 3 -eq 0) {
+    if ($IncludeServerErrors -and ($round % 3 -eq 0 -or $round -eq $Rounds)) {
         foreach ($path in $serverErrorPaths) {
             Invoke-DemoRequest -Path $path -ExpectedServerError $true
             Start-Sleep -Milliseconds $DelayMilliseconds
