@@ -1,7 +1,8 @@
 param(
     [string]$BaseUrl = "http://localhost:8080",
     [int]$Rounds = 10,
-    [int]$DelayMilliseconds = 250
+    [int]$DelayMilliseconds = 250,
+    [switch]$IncludeServerErrors
 )
 
 $ErrorActionPreference = "Stop"
@@ -27,10 +28,15 @@ $notFoundPaths = @(
     "/api/supermarkets/999999"
 )
 
+$serverErrorPaths = @(
+    "/internal/demo/error"
+)
+
 function Invoke-DemoRequest {
     param(
         [string]$Path,
-        [bool]$ExpectedNotFound = $false
+        [bool]$ExpectedNotFound = $false,
+        [bool]$ExpectedServerError = $false
     )
 
     $uri = "$BaseUrl$Path"
@@ -48,6 +54,11 @@ function Invoke-DemoRequest {
 
         if ($ExpectedNotFound -and $statusCode -eq 404) {
             Write-Host ("404 GET {0} (esperado para demo)" -f $Path)
+            return
+        }
+
+        if ($ExpectedServerError -and $statusCode -eq 500) {
+            Write-Host ("500 GET {0} (esperado para demo)" -f $Path)
             return
         }
 
@@ -75,6 +86,13 @@ for ($round = 1; $round -le $Rounds; $round++) {
     if ($round % 2 -eq 0) {
         foreach ($path in $notFoundPaths) {
             Invoke-DemoRequest -Path $path -ExpectedNotFound $true
+            Start-Sleep -Milliseconds $DelayMilliseconds
+        }
+    }
+
+    if ($IncludeServerErrors -and $round % 3 -eq 0) {
+        foreach ($path in $serverErrorPaths) {
+            Invoke-DemoRequest -Path $path -ExpectedServerError $true
             Start-Sleep -Milliseconds $DelayMilliseconds
         }
     }
