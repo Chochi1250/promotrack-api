@@ -1,12 +1,17 @@
 package com.promotrack.api.dto.response;
 
-import java.time.LocalDateTime;
+import com.fasterxml.jackson.annotation.JsonInclude;
 
+import java.time.LocalDateTime;
+import java.util.Map;
+
+@JsonInclude(JsonInclude.Include.NON_EMPTY)
 public record ErrorResponse(
         LocalDateTime timestamp,
         int status,
-        String error,
-        String message,
-        String path
+        String title,
+        String detail,
+        String path,
+        Map<String, String> errors
 ) {
 }

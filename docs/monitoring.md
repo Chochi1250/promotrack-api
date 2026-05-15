@@ -1,6 +1,6 @@
 # Monitoreo Basico
 
-PromoTrack API usa Spring Boot Actuator, Micrometer, Prometheus y Grafana para exponer un baseline seguro de monitoreo local. El objetivo es validar estado, informacion de la aplicacion, metricas tecnicas y visualizacion sin sobredimensionar el proyecto ni publicar datos sensibles.
+PromoTrack API usa Spring Boot Actuator, Micrometer, Prometheus y Grafana para un monitoreo local simple y seguro. El objetivo es validar estado, informacion general, metricas tecnicas y visualizacion sin sobredimensionar el proyecto ni publicar datos sensibles.
 
 ## Endpoints disponibles
 
@@ -65,7 +65,7 @@ scripts/
   simulate-traffic.ps1
 ```
 
-`monitoring/prometheus.yml` define el scrape de Prometheus. `monitoring/grafana/promotrack-dashboard.json` versiona el dashboard exportado desde Grafana. Los archivos dentro de `monitoring/grafana/provisioning/` cargan automaticamente el datasource Prometheus y el dashboard al iniciar Grafana con Docker Compose.
+`monitoring/prometheus.yml` define el scrape de Prometheus. `monitoring/grafana/promotrack-dashboard.json` versiona el dashboard de demo. Los archivos de `monitoring/grafana/provisioning/` cargan automaticamente el datasource y el dashboard al iniciar Grafana con Docker Compose.
 
 ## Levantar el stack local
 
@@ -98,7 +98,7 @@ Si el dashboard no aparece porque se esta usando una instancia externa de Grafan
 
 ## Trafico de demo
 
-El script `scripts/simulate-traffic.ps1` genera requests de lectura contra endpoints validos de la API y algunos 404 controlados para que el dashboard muestre trafico y errores esperados.
+El script `scripts/simulate-traffic.ps1` genera requests de lectura contra endpoints validos y algunos 404 controlados. Sirve para que Prometheus y Grafana muestren trafico durante una demo.
 
 Ejecutar:
 
@@ -115,7 +115,7 @@ Opciones utiles:
 
 ## Por que no se expone todo Actuator
 
-Actuator incluye endpoints utiles para diagnostico, pero varios pueden revelar informacion interna. Para este TP se expone solo lo necesario para monitoreo basico y visualizacion local:
+Actuator ofrece endpoints utiles para diagnostico, pero varios pueden revelar informacion interna. Para este TP se expone solo lo necesario para monitoreo basico local:
 
 - estado de disponibilidad,
 - informacion general de la app,
@@ -144,11 +144,11 @@ Exponer estos endpoints sin controles adicionales puede filtrar variables de ent
 
 `prometheus` expone metricas en el formato que Prometheus puede scrapear. No reemplaza a `metrics`; lo complementa para recoleccion y consultas PromQL.
 
-Grafana se usa como representacion visual de las metricas recolectadas por Prometheus. El datasource de Prometheus queda provisionado localmente desde `monitoring/grafana/provisioning/datasources/prometheus.yml`. En este baseline se versiona un dashboard de demo, pero no se versionan credenciales: la idea es mantener una integracion local simple para exploracion y defensa academica.
+Grafana muestra las metricas recolectadas por Prometheus. El datasource queda provisionado desde `monitoring/grafana/provisioning/datasources/prometheus.yml`. Se versiona un dashboard de demo, pero no credenciales.
 
 ## Dashboard de Grafana
 
-El dashboard versionado en `monitoring/grafana/promotrack-dashboard.json` permite visualizar el estado de la API durante una demo local. Esta pensado para mostrar senales basicas de operacion sin agregar herramientas innecesarias.
+El dashboard versionado en `monitoring/grafana/promotrack-dashboard.json` permite visualizar el estado de la API durante una demo local. Muestra senales basicas de operacion sin agregar herramientas innecesarias.
 
 Paneles incluidos:
 
@@ -168,7 +168,7 @@ Metricas observadas:
 - `jvm_memory_used_bytes`
 - `process_cpu_usage`
 
-Grafana no recolecta metricas por si mismo en esta configuracion. Grafana consulta a Prometheus y las representa visualmente en paneles.
+Grafana no recolecta metricas por si mismo en esta configuracion: consulta a Prometheus y las muestra en paneles.
 
 ## Que metricas mirar
 
@@ -224,7 +224,7 @@ Metricas son valores numericos medidos en el tiempo. Permiten ver tendencias, de
 
 Logs son eventos registrados por la aplicacion. Sirven para entender que paso en un momento especifico.
 
-Traces representan el recorrido de una solicitud entre componentes. Son utiles en sistemas distribuidos, pero no se implementan en este baseline porque PromoTrack API es una aplicacion simple.
+Traces representan el recorrido de una solicitud entre componentes. Son utiles en sistemas distribuidos, pero no se implementan en esta version porque PromoTrack API es una aplicacion simple.
 
 Latency mide cuanto tarda una operacion o request en responder.
 
@@ -236,10 +236,10 @@ Saturation mide que tan cerca esta el sistema de agotar sus recursos, por ejempl
 
 ## Justificacion para el TP
 
-Prometheus y Grafana son una combinacion simple y defendible para este trabajo porque cubren el ciclo basico de monitoreo: la API expone metricas, Prometheus las recolecta y Grafana las visualiza. Todo corre localmente con Docker Compose, no requiere Kubernetes, no agrega tracing distribuido, no usa New Relic y no versiona secretos.
+Prometheus y Grafana son una combinacion simple y defendible para este trabajo: la API expone metricas, Prometheus las recolecta y Grafana las visualiza. Todo corre localmente con Docker Compose, sin Kubernetes, tracing distribuido, APM externo ni secretos versionados.
 
-La solucion permite demostrar conceptos de DevOps y observabilidad con bajo acoplamiento: si el monitoreo se apaga, la API sigue funcionando; si la API cambia, el contrato principal de monitoreo sigue siendo `/actuator/prometheus`.
+La solucion mantiene bajo acoplamiento: si el monitoreo se apaga, la API sigue funcionando; si la API evoluciona, el contrato principal de monitoreo sigue siendo `/actuator/prometheus`.
 
 ## Evolucion opcional
 
-New Relic One puede quedar como evolucion futura para centralizar metricas, dashboards, errores y trazas. No forma parte del baseline actual porque agregaria complejidad innecesaria para el alcance academico del proyecto.
+New Relic, APM o trazas pueden quedar como evolucion futura para centralizar metricas, dashboards, errores y recorridos de requests. No forman parte de la version actual porque agregarian complejidad innecesaria para el alcance academico del proyecto.

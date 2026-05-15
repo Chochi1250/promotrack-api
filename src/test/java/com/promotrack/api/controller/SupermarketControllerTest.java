@@ -87,7 +87,8 @@ class SupermarketControllerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.status").value(400))
                 .andExpect(jsonPath("$.path").value("/api/supermarkets"))
-                .andExpect(jsonPath("$.message").isNotEmpty());
+                .andExpect(jsonPath("$.detail").isNotEmpty())
+                .andExpect(jsonPath("$.errors.name").value("name is required"));
     }
 
     @Test
@@ -123,6 +124,7 @@ class SupermarketControllerTest {
         mockMvc.perform(get("/api/supermarkets/99"))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.status").value(404))
+                .andExpect(jsonPath("$.title").value("Resource not found"))
                 .andExpect(jsonPath("$.path").value("/api/supermarkets/99"));
     }
 
