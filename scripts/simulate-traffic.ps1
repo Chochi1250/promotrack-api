@@ -1,103 +1,93 @@
 param(
-    [string]$BaseUrl = "http://localhost:8080",
     [int]$Rounds = 10,
-    [int]$DelayMilliseconds = 250,
-    [switch]$IncludeServerErrors
+    [int]$DelayMilliseconds = 150,
+    [string]$BaseUrl = "http://localhost:8080",
+    [switch]$IncludeServerErrors,
+    [string]$ServerErrorEndpoint = "/internal/demo/error"
 )
 
-$ErrorActionPreference = "Stop"
-
-$today = Get-Date
-$calendarFrom = $today.AddDays(-7).ToString("yyyy-MM-dd")
-$calendarTo = $today.AddDays(30).ToString("yyyy-MM-dd")
-
-$validPaths = @(
-    "/",
-    "/api/supermarkets",
-    "/api/offers",
-    "/api/offers/today",
-    "/api/offers/upcoming",
-    "/api/offers/expiring-soon",
-    "/api/offers/calendar?from=$calendarFrom&to=$calendarTo",
-    "/actuator/health"
+$validEndpoints = @(
+    "$BaseUrl/api/offers",
+    "$BaseUrl/api/offers/today",
+    "$BaseUrl/api/offers/upcoming",
+    "$BaseUrl/api/offers/expiring-soon",
+    "$BaseUrl/api/supermarkets"
 )
 
-$notFoundPaths = @(
-    "/api/demo/not-found",
-    "/api/offers/999999",
-    "/api/supermarkets/999999"
+$clientErrorEndpoints = @(
+    "$BaseUrl/api/no-existe",
+    "$BaseUrl/api/offers/999999",
+    "$BaseUrl/api/supermarkets/999999",
+    "$BaseUrl/actuator/env"
 )
 
-$serverErrorPaths = @(
-    "/internal/demo/error"
-)
+$serverErrorUrl = "$BaseUrl$ServerErrorEndpoint"
 
-function Invoke-DemoRequest {
-    param(
-        [string]$Path,
-        [bool]$ExpectedNotFound = $false,
-        [bool]$ExpectedServerError = $false
-    )
+Write-Host ""
+Write-Host "Simulando trafico para PromoTrack API..."
+Write-Host "Base URL: $BaseUrl"
+Write-Host "Rondas: $Rounds"
+Write-Host "Delay: $DelayMilliseconds ms"
+Write-Host "Incluir errores 5xx: $IncludeServerErrors"
 
-    $uri = "$BaseUrl$Path"
-
-    try {
-        $response = Invoke-WebRequest -Method GET -Uri $uri -MaximumRedirection 5
-        Write-Host ("{0} GET {1}" -f [int]$response.StatusCode, $Path)
-    }
-    catch {
-        $statusCode = $null
-
-        if ($_.Exception.Response -and $_.Exception.Response.StatusCode) {
-            $statusCode = [int]$_.Exception.Response.StatusCode
-        }
-
-        if ($ExpectedNotFound -and $statusCode -eq 404) {
-            Write-Host ("404 GET {0} (esperado para demo)" -f $Path)
-            return
-        }
-
-        if ($ExpectedServerError -and $statusCode -eq 500) {
-            Write-Host ("500 GET {0} (esperado para demo)" -f $Path)
-            return
-        }
-
-        if ($statusCode) {
-            Write-Host ("{0} GET {1} (error)" -f $statusCode, $Path)
-            return
-        }
-
-        Write-Host ("ERROR GET {0}: {1}" -f $Path, $_.Exception.Message)
-    }
+if ($IncludeServerErrors) {
+    Write-Host "Endpoint 5xx: $serverErrorUrl"
 }
 
-Write-Host "Generando trafico de demo contra $BaseUrl"
-Write-Host "Rondas: $Rounds"
+Write-Host ""
 
 for ($round = 1; $round -le $Rounds; $round++) {
-    Write-Host ""
-    Write-Host ("Ronda {0}/{1}" -f $round, $Rounds)
+    Write-Host "Ronda $round de $Rounds"
 
-    foreach ($path in $validPaths) {
-        Invoke-DemoRequest -Path $path
+    1..10 | ForEach-Object {
+        $random = Get-Random -Minimum 1 -Maximum 101
+
+        # Distribucion aproximada:
+        # - 70% trafico valido
+        # - 20% errores 4xx controlados
+        # - 10% errores 5xx, solo si IncludeServerErrors esta activo
+        #
+        # Ademas, si IncludeServerErrors esta activo, se fuerza al menos
+        # un 500 en la ultima request de la ultima ronda. Esto facilita
+        # la demo incluso con -Rounds 1.
+        $isLastRequest = ($round -eq $Rounds -and $_ -eq 10)
+
+        if ($IncludeServerErrors -and ($isLastRequest -or $random -gt 90)) {
+            $url = $serverErrorUrl
+        }
+        elseif ($random -gt 70) {
+            $url = Get-Random -InputObject $clientErrorEndpoints
+        }
+        else {
+            $url = Get-Random -InputObject $validEndpoints
+        }
+
+        try {
+            $response = Invoke-WebRequest -Uri $url -Method GET -ErrorAction Stop
+            Write-Host "OK  $($response.StatusCode) -> $url"
+        }
+        catch {
+            $statusCode = $null
+
+            if ($_.Exception.Response -ne $null) {
+                $statusCode = [int]$_.Exception.Response.StatusCode
+            }
+
+            if ($statusCode) {
+                Write-Host "ERR $statusCode -> $url"
+            }
+            else {
+                Write-Host "ERR ---- -> $url"
+            }
+        }
+
         Start-Sleep -Milliseconds $DelayMilliseconds
-    }
-
-    if ($round % 2 -eq 0) {
-        foreach ($path in $notFoundPaths) {
-            Invoke-DemoRequest -Path $path -ExpectedNotFound $true
-            Start-Sleep -Milliseconds $DelayMilliseconds
-        }
-    }
-
-    if ($IncludeServerErrors -and ($round % 3 -eq 0 -or $round -eq $Rounds)) {
-        foreach ($path in $serverErrorPaths) {
-            Invoke-DemoRequest -Path $path -ExpectedServerError $true
-            Start-Sleep -Milliseconds $DelayMilliseconds
-        }
     }
 }
 
 Write-Host ""
-Write-Host "Trafico de demo finalizado."
-Write-Host "Revisar Prometheus en http://localhost:9090 y Grafana en http://localhost:3000."
+Write-Host "Simulacion finalizada."
+Write-Host "Revisar metricas en:"
+Write-Host "- Prometheus: http://localhost:9090"
+Write-Host "- Grafana:    http://localhost:3000"
+Write-Host ""
