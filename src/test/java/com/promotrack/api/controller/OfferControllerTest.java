@@ -88,7 +88,8 @@ class OfferControllerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.status").value(400))
                 .andExpect(jsonPath("$.path").value("/api/offers"))
-                .andExpect(jsonPath("$.message").isNotEmpty());
+                .andExpect(jsonPath("$.detail").isNotEmpty())
+                .andExpect(jsonPath("$.errors.title").value("title is required"));
     }
 
     @Test
@@ -182,6 +183,7 @@ class OfferControllerTest {
                         .param("to", "2026-05-01"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.title").value("Invalid request"))
                 .andExpect(jsonPath("$.path").value("/api/offers/calendar"));
     }
 
