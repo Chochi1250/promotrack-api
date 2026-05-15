@@ -255,7 +255,7 @@ Ofertas:
 
 ## Perfil Dev con H2
 
-El perfil activo por defecto es `dev`. Usa una base H2 en memoria configurada en `src/main/resources/application-dev.yml`.
+El perfil activo por defecto es `dev`. En este TP se usa como baseline academico/local de demo, no como configuracion productiva. Usa una base H2 en memoria configurada en `src/main/resources/application-dev.yml`.
 
 La configuracion actual:
 

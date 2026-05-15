@@ -75,7 +75,9 @@ Desde la raiz del proyecto:
 docker compose up --build
 ```
 
-Esto levanta:
+Esto levanta un stack local de demo con el perfil `dev`. Es el baseline academico del TP y no representa una configuracion productiva.
+
+Esto incluye:
 
 - API en `http://localhost:8080`
 - Prometheus en `http://localhost:9090`
