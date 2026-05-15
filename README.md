@@ -259,8 +259,11 @@ La configuracion actual:
 - Usa modo compatible con PostgreSQL para facilitar una futura migracion.
 - Expone Actuator en `/actuator/health`, `/actuator/info`, `/actuator/metrics` y `/actuator/prometheus`.
 
-## Proximos Pasos
+## Evolucion Opcional
 
-- Agregar PostgreSQL para entorno containerizado.
-- Publicar imagen Docker en un registry.
-- Evaluar New Relic One como evolucion opcional de monitoreo.
+El alcance actual cubre la API, tests, containerizacion, CI, publicacion en GHCR y monitoreo local. Como mejoras futuras, sin formar parte de la entrega principal del TP, se podria evaluar:
+
+- Desplegar la API en Render u otra plataforma gratuita.
+- Agregar New Relic, APM o trazas si se busca observabilidad mas completa.
+- Separar con mas detalle perfiles `dev` y `prod`, incluyendo hardening de H2, Swagger y Actuator.
+- Versionar releases estables a partir de `main`.
