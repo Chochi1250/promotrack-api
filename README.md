@@ -186,6 +186,12 @@ Opcionalmente se puede ajustar la cantidad de rondas:
 .\scripts\simulate-traffic.ps1 -Rounds 20 -DelayMilliseconds 100
 ```
 
+Para generar errores 5xx controlados en una demo local con perfil `dev`:
+
+```powershell
+.\scripts\simulate-traffic.ps1 -IncludeServerErrors
+```
+
 Metricas utiles para observar:
 
 - requests HTTP,

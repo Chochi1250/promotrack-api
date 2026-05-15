@@ -113,6 +113,14 @@ Opciones utiles:
 .\scripts\simulate-traffic.ps1 -BaseUrl http://localhost:8080
 ```
 
+Para validar el panel de errores 5xx, el perfil `dev` incluye el endpoint interno `GET /internal/demo/error`. No es una funcionalidad de negocio: solo lanza un error controlado para que el `GlobalExceptionHandler` devuelva un 500 generico y Prometheus registre la metrica. Se puede incluir en la simulacion con:
+
+```powershell
+.\scripts\simulate-traffic.ps1 -IncludeServerErrors
+```
+
+Este endpoint esta limitado al perfil `dev` y no debe habilitarse en produccion.
+
 ## Por que no se expone todo Actuator
 
 Actuator ofrece endpoints utiles para diagnostico, pero varios pueden revelar informacion interna. Para este TP se expone solo lo necesario para monitoreo basico local:
