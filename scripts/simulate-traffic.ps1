@@ -6,6 +6,10 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+$today = Get-Date
+$calendarFrom = $today.AddDays(-7).ToString("yyyy-MM-dd")
+$calendarTo = $today.AddDays(30).ToString("yyyy-MM-dd")
+
 $validPaths = @(
     "/",
     "/api/supermarkets",
@@ -13,7 +17,7 @@ $validPaths = @(
     "/api/offers/today",
     "/api/offers/upcoming",
     "/api/offers/expiring-soon",
-    "/api/offers/calendar?from=2026-01-01&to=2026-12-31",
+    "/api/offers/calendar?from=$calendarFrom&to=$calendarTo",
     "/actuator/health"
 )
 
