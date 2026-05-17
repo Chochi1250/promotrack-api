@@ -27,7 +27,8 @@ Backend:
 
 Base de datos:
 
-- H2 en memoria para MVP academico
+- PostgreSQL en Docker Compose para entorno `dev`
+- H2 en memoria para tests automatizados
 
 Testing:
 
@@ -74,11 +75,15 @@ Ejecutar tests:
 .\mvnw.cmd clean test
 ```
 
+Los tests usan H2 en memoria mediante el perfil `test`, por lo que no requieren PostgreSQL levantado.
+
 Levantar la aplicacion:
 
 ```powershell
 .\mvnw.cmd spring-boot:run
 ```
+
+El perfil por defecto es `dev`, que usa PostgreSQL. Para ejecutar la aplicacion con Maven, primero debe haber una instancia PostgreSQL disponible en `localhost:5432` o se deben configurar las variables `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME` y `SPRING_DATASOURCE_PASSWORD`.
 
 URLs principales:
 
@@ -108,7 +113,7 @@ Invoke-RestMethod http://localhost:8080/actuator/health
 
 ## Ejecucion con Docker Compose
 
-Docker Compose levanta un entorno local reproducible con la API, Prometheus y Grafana:
+Docker Compose levanta un entorno local reproducible con la API, PostgreSQL, Prometheus y Grafana:
 
 ```powershell
 docker compose up --build
@@ -123,6 +128,7 @@ docker compose down
 Servicios disponibles:
 
 - API: `http://localhost:8080`
+- PostgreSQL: `localhost:5432`
 - Swagger UI: `http://localhost:8080/swagger-ui/index.html`
 - Prometheus: `http://localhost:9090`
 - Grafana: `http://localhost:3000`
@@ -133,6 +139,13 @@ Validaciones utiles:
 docker compose ps
 Invoke-RestMethod http://localhost:8080/actuator/health
 Invoke-RestMethod http://localhost:8080/actuator/prometheus
+```
+
+Si se necesita recrear la base local desde cero:
+
+```powershell
+docker compose down -v
+docker compose up --build
 ```
 
 ## CI/CD con GitHub Actions
@@ -260,7 +273,6 @@ Ofertas:
 - `GET /api/offers/calendar?from=YYYY-MM-DD&to=YYYY-MM-DD`
 - `GET /api/offers/supermarket/{supermarketId}`
 
-<<<<<<< HEAD
 El parametro `days` de `/api/offers/expiring-soon` es opcional. Si no se informa, usa `3` dias por defecto. El rango permitido es `1..30`.
 
 Soporte:
@@ -281,26 +293,6 @@ El proyecto usa un flujo simple orientado a Pull Requests:
 
 Flujo recomendado:
 
-=======
-Soporte:
-
-- `GET /`
-- `GET /actuator/health`
-- `GET /actuator/info`
-- `GET /actuator/metrics`
-- `GET /actuator/prometheus`
-
-## Flujo de trabajo con Git
-
-El proyecto usa un flujo simple orientado a Pull Requests:
-
-- `feature/*`: ramas para cambios puntuales.
-- `develop`: rama de integracion.
-- `main`: rama estable/final.
-
-Flujo recomendado:
-
->>>>>>> develop
 ```text
 feature/* -> Pull Request a develop -> merge a develop -> Pull Request a main -> merge a main
 ```
@@ -309,35 +301,44 @@ Los Pull Requests permiten ejecutar CI antes de integrar cambios. La publicacion
 
 ## Decisiones tecnicas
 
-- H2 se usa como base en memoria para mantener el MVP academico simple y reproducible.
+- PostgreSQL se usa en Docker Compose para representar un entorno local mas realista y reproducible.
+- H2 se mantiene para tests rapidos y aislados.
 - Dockerfile multi-stage separa build y runtime.
-- Docker Compose permite levantar API, Prometheus y Grafana con un solo comando.
+- Docker Compose permite levantar API, PostgreSQL, Prometheus y Grafana con un solo comando.
 - GitHub Actions automatiza validacion y publicacion de imagen.
 - GHCR se usa como registry integrado con GitHub y trazable por tags.
 - Prometheus y Grafana cubren monitoreo local sin depender de servicios externos.
 - Swagger/OpenAPI documenta los endpoints disponibles.
 
-Kubernetes, Terraform, PostgreSQL, Render, New Relic, APM y OpenTelemetry no forman parte de la implementacion actual. Quedan como roadmap futuro para no sobredimensionar el TP.
+Kubernetes, Terraform, Render, New Relic, APM y OpenTelemetry no forman parte de la implementacion actual. Quedan como roadmap futuro para no sobredimensionar el TP.
 
-## Perfil dev con H2
+## Perfiles de base de datos
 
 El perfil activo por defecto es `dev`. Esta configuracion es un baseline academico/local, no una configuracion productiva.
 
-Configuracion actual:
+Perfil `dev`:
 
-- H2 en memoria;
-- consola H2 en `/h2-console`;
-- datos iniciales desde `data.sql`;
-- modo compatible con PostgreSQL para facilitar una futura migracion;
+- usa PostgreSQL;
+- en Docker Compose se conecta a `postgres:5432`;
+- fuera de Docker Compose se conecta por defecto a `localhost:5432`;
+- toma credenciales desde variables de entorno;
+- carga datos iniciales desde `data-postgres.sql`;
 - Actuator limitado a `health`, `info`, `metrics` y `prometheus`.
 
-Credenciales H2 en perfil `dev`:
+Variables usadas por el perfil `dev`:
 
 ```text
-JDBC URL: jdbc:h2:mem:promotrack
-User Name: sa
-Password:
+SPRING_DATASOURCE_URL
+SPRING_DATASOURCE_USERNAME
+SPRING_DATASOURCE_PASSWORD
 ```
+
+Perfil `test`:
+
+- usa H2 en memoria;
+- no requiere servicios externos;
+- carga datos iniciales desde `data.sql`;
+- mantiene los tests rapidos y aislados.
 
 ## Evidencias para defensa
 
@@ -357,7 +358,7 @@ Checklist sugerida:
 
 Mejoras posibles fuera del alcance principal de esta entrega:
 
-- migrar de H2 a PostgreSQL;
+- agregar Flyway para versionar migraciones de base de datos;
 - desplegar en Render u otro servicio cloud gratuito;
 - agregar New Relic o una herramienta APM;
 - incorporar OpenTelemetry para trazas;
