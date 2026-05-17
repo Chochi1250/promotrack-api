@@ -201,6 +201,20 @@ class OfferServiceTest {
     }
 
     @Test
+    void findExpiringSoonOffersUsesCustomDaysFromToday() {
+        Offer offer = validOffer();
+        when(offerRepository.findByActiveTrueAndStartDateLessThanEqualAndEndDateBetween(
+                FIXED_TODAY,
+                FIXED_TODAY,
+                FIXED_TODAY.plusDays(7)
+        )).thenReturn(List.of(offer));
+
+        List<Offer> result = offerService.findExpiringSoonOffers(7);
+
+        assertThat(result).containsExactly(offer);
+    }
+
+    @Test
     void findCalendarOffersReturnsOffersOverlappingTheRequestedRange() {
         Offer offer = validOffer();
         LocalDate from = LocalDate.of(2026, 5, 1);

@@ -28,7 +28,9 @@ class OpenApiDocumentationTest {
                 .andExpect(jsonPath("$.paths", hasKey("/api/supermarkets/{id}")))
                 .andExpect(jsonPath("$.paths", hasKey("/api/offers")))
                 .andExpect(jsonPath("$.paths", hasKey("/api/offers/{id}")))
+                .andExpect(jsonPath("$.paths", hasKey("/api/offers/expiring-soon")))
                 .andExpect(jsonPath("$.paths", hasKey("/api/offers/calendar")))
+                .andExpect(jsonPath("$.paths['/api/offers/expiring-soon'].get.parameters[?(@.name == 'days')]").exists())
                 .andExpect(jsonPath("$.tags[?(@.name == 'Supermarkets')]").exists())
                 .andExpect(jsonPath("$.tags[?(@.name == 'Offers')]").exists());
     }

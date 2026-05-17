@@ -59,7 +59,7 @@ La API permite gestionar un catalogo basico de supermercados y ofertas:
 - consulta de ofertas activas;
 - consulta de ofertas del dia;
 - consulta de ofertas futuras;
-- consulta de ofertas proximas a vencer;
+- consulta de ofertas proximas a vencer, con rango configurable entre 1 y 30 dias;
 - consulta de ofertas por rango de fechas;
 - consulta de ofertas por supermercado;
 - validacion de requests con Bean Validation;
@@ -256,8 +256,11 @@ Ofertas:
 - `GET /api/offers/today`
 - `GET /api/offers/upcoming`
 - `GET /api/offers/expiring-soon`
+- `GET /api/offers/expiring-soon?days=7`
 - `GET /api/offers/calendar?from=YYYY-MM-DD&to=YYYY-MM-DD`
 - `GET /api/offers/supermarket/{supermarketId}`
+
+El parametro `days` de `/api/offers/expiring-soon` es opcional. Si no se informa, usa `3` dias por defecto. El rango permitido es `1..30`.
 
 Soporte:
 
