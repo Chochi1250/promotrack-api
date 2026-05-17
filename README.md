@@ -1,96 +1,94 @@
 # PromoTrack API
 
-PromoTrack API es una API REST para gestionar supermercados y ofertas de supermercados argentinos.
+PromoTrack API es una API REST academica desarrollada con Java y Spring Boot para gestionar supermercados y ofertas. La aplicacion es simple a proposito: el foco del Trabajo Practico de DevOps esta en demostrar automatizacion, contenedores, CI/CD, publicacion de imagen Docker, monitoreo y documentacion tecnica defendible.
 
-## Objetivo en el TP DevOps
+## Objetivo del TP
 
-Este proyecto forma parte de un Trabajo Practico Integrador de DevOps. La API funciona como aplicacion base para aplicar practicas de desarrollo, testing, containerizacion, CI/CD, publicacion de imagen Docker y monitoreo.
+El proyecto funciona como aplicacion base para aplicar practicas DevOps sobre un backend real pero acotado:
 
-## Stack
+- validar cambios automaticamente con GitHub Actions;
+- construir y ejecutar la aplicacion con Docker;
+- levantar un entorno local reproducible con Docker Compose;
+- publicar una imagen Docker en GitHub Container Registry;
+- exponer healthchecks y metricas con Spring Actuator;
+- recolectar y visualizar metricas con Prometheus y Grafana;
+- documentar el flujo de entrega y las decisiones tecnicas.
+
+## Stack tecnologico
+
+Backend:
 
 - Java 25
 - Spring Boot 4.0.6
 - Spring Web / MVC
 - Spring Data JPA
-- H2 Database para MVP
 - Bean Validation
+- Springdoc OpenAPI / Swagger UI
+
+Base de datos:
+
+- H2 en memoria para MVP academico
+
+Testing:
+
+- JUnit
+- Mockito
+- MockMvc
+- Maven Wrapper
+
+DevOps / CI/CD:
+
+- Docker
+- Docker Compose
+- GitHub Actions
+- GitHub Container Registry
+
+Observabilidad:
+
 - Spring Boot Actuator
 - Micrometer Prometheus Registry
 - Prometheus
 - Grafana
-- Springdoc OpenAPI / Swagger UI
-- JUnit, Mockito y MockMvc
-- Maven Wrapper
 
-## Ejecutar Localmente
+## Funcionalidades principales
 
-Desde la raiz del proyecto:
+La API permite gestionar un catalogo basico de supermercados y ofertas:
 
-```powershell
-.\mvnw.cmd spring-boot:run
-```
+- alta, consulta, actualizacion y baja logica de supermercados;
+- alta, consulta, actualizacion y baja logica de ofertas;
+- consulta de ofertas activas;
+- consulta de ofertas del dia;
+- consulta de ofertas futuras;
+- consulta de ofertas proximas a vencer;
+- consulta de ofertas por rango de fechas;
+- consulta de ofertas por supermercado;
+- validacion de requests con Bean Validation;
+- respuestas de error centralizadas;
+- documentacion OpenAPI disponible con Swagger UI.
 
-La aplicacion queda disponible en:
+## Ejecucion local con Maven
 
-```text
-http://localhost:8080
-```
-
-## Correr Tests
+Ejecutar tests:
 
 ```powershell
 .\mvnw.cmd clean test
 ```
 
-## Integracion Continua
-
-El proyecto incluye un workflow de GitHub Actions en `.github/workflows/ci.yml`.
-
-La CI se ejecuta en `push` y `pull_request` hacia `develop` y `main`. Valida:
-
-- Tests con Maven Wrapper.
-- Build del paquete con Maven.
-- Construccion de la imagen Docker sin publicarla.
-
-## Publicacion de Imagen Docker en GHCR
-
-La publicacion de imagen Docker permite construir la API como una imagen versionada y subirla a un registry para que pueda descargarse y ejecutarse desde otros entornos.
-
-Este proyecto publica la imagen automaticamente en GitHub Container Registry mediante el workflow `.github/workflows/docker-publish.yml`. El workflow corre en `push` a `develop`, `push` a `main` y tambien puede ejecutarse manualmente con `workflow_dispatch`. No publica imagenes desde `pull_request`.
-
-La imagen queda publicada en:
-
-```text
-ghcr.io/<owner>/promotrack-api
-```
-
-Tags publicados:
-
-- `develop`: cuando el workflow corre sobre la rama `develop`.
-- `latest`: cuando el workflow corre sobre la rama `main`.
-- `<sha>`: commit SHA corto para trazabilidad.
-
-Descargar la imagen publicada:
+Levantar la aplicacion:
 
 ```powershell
-docker pull ghcr.io/<owner>/promotrack-api:latest
+.\mvnw.cmd spring-boot:run
 ```
 
-Ejecutar la imagen publicada:
+URLs principales:
 
-```powershell
-docker run --rm -p 8080:8080 ghcr.io/<owner>/promotrack-api:latest
-```
+- API: `http://localhost:8080`
+- Swagger UI: `http://localhost:8080/swagger-ui/index.html`
+- Healthcheck: `http://localhost:8080/actuator/health`
 
-Validar que la API responde:
+## Ejecucion con Docker
 
-```powershell
-Invoke-RestMethod http://localhost:8080/actuator/health
-```
-
-## Docker
-
-Construir la imagen:
+Construir la imagen local:
 
 ```powershell
 docker build -t promotrack-api .
@@ -99,36 +97,37 @@ docker build -t promotrack-api .
 Ejecutar el contenedor:
 
 ```powershell
-docker run -p 8080:8080 promotrack-api
+docker run --rm -p 8080:8080 promotrack-api
 ```
 
-Validar que el contenedor responde:
+Validar que la API responde:
 
 ```powershell
 Invoke-RestMethod http://localhost:8080/actuator/health
 ```
 
-Tambien se puede abrir Swagger UI en el navegador:
+## Ejecucion con Docker Compose
 
-```text
-http://localhost:8080/swagger-ui/index.html
-```
-
-## Docker Compose
-
-Construir y levantar la API con Prometheus y Grafana:
+Docker Compose levanta un entorno local reproducible con la API, Prometheus y Grafana:
 
 ```powershell
 docker compose up --build
 ```
 
-Detener y remover el contenedor:
+Detener el entorno:
 
 ```powershell
 docker compose down
 ```
 
-Validar health:
+Servicios disponibles:
+
+- API: `http://localhost:8080`
+- Swagger UI: `http://localhost:8080/swagger-ui/index.html`
+- Prometheus: `http://localhost:9090`
+- Grafana: `http://localhost:3000`
+
+Validaciones utiles:
 
 ```powershell
 docker compose ps
@@ -136,21 +135,76 @@ Invoke-RestMethod http://localhost:8080/actuator/health
 Invoke-RestMethod http://localhost:8080/actuator/prometheus
 ```
 
-Tambien se puede abrir en el navegador:
+## CI/CD con GitHub Actions
+
+El proyecto usa GitHub Actions para separar validacion y publicacion.
+
+Workflow de CI: `.github/workflows/ci.yml`
+
+- Se ejecuta en Pull Requests hacia `develop` y `main`.
+- Tambien se ejecuta en push a `develop` y `main`.
+- Valida tests con Maven Wrapper.
+- Genera el package de la aplicacion.
+- Valida la configuracion de Docker Compose.
+- Construye la imagen Docker localmente sin publicarla.
+
+Workflow de publicacion: `.github/workflows/docker-publish.yml`
+
+- Se ejecuta en push a `develop`.
+- Se ejecuta en push a `main`.
+- Tambien puede ejecutarse manualmente con `workflow_dispatch`.
+- Ejecuta tests.
+- Construye la imagen Docker.
+- Publica la imagen en GitHub Container Registry.
+
+Flujo esperado:
 
 ```text
-http://localhost:8080/actuator/health
+feature branch -> Pull Request -> CI -> develop -> imagen :develop
+develop -> Pull Request -> CI -> main -> imagen :latest
 ```
 
-Abrir Swagger UI:
+## Publicacion en GitHub Container Registry
+
+La imagen Docker se publica en GitHub Container Registry:
 
 ```text
-http://localhost:8080/swagger-ui/index.html
+ghcr.io/chochi1250/promotrack-api
 ```
 
-## Monitoreo
+Tags usados:
 
-El proyecto usa Spring Boot Actuator, Micrometer, Prometheus y Grafana con una exposicion minima y explicita para monitoreo basico local:
+- `develop`: imagen de integracion generada desde la rama `develop`.
+- `latest`: imagen estable generada desde la rama `main`.
+- SHA corto: tag asociado al commit para trazabilidad.
+
+Descargar la imagen estable:
+
+```powershell
+docker pull ghcr.io/chochi1250/promotrack-api:latest
+```
+
+Ejecutar la imagen publicada:
+
+```powershell
+docker run --rm -p 8080:8080 ghcr.io/chochi1250/promotrack-api:latest
+```
+
+Validar healthcheck:
+
+```powershell
+Invoke-RestMethod http://localhost:8080/actuator/health
+```
+
+Para validar una imagen de integracion:
+
+```powershell
+docker pull ghcr.io/chochi1250/promotrack-api:develop
+```
+
+## Healthcheck y Actuator
+
+Actuator expone una lista acotada de endpoints para monitoreo local:
 
 - `GET /actuator/health`
 - `GET /actuator/info`
@@ -159,78 +213,30 @@ El proyecto usa Spring Boot Actuator, Micrometer, Prometheus y Grafana con una e
 
 No se exponen endpoints sensibles como `env`, `beans`, `heapdump`, `threaddump`, `configprops`, `shutdown` o `loggers`.
 
-Prometheus scrapea la API desde `monitoring/prometheus.yml` usando el target interno de Docker `api:8080`. Grafana se usa como representacion visual de las metricas y queda conectado a Prometheus mediante provisioning local.
+## Monitoreo local
 
-Prometheus:
+El monitoreo local se basa en Actuator, Micrometer, Prometheus y Grafana.
 
-- UI: `http://localhost:9090`
-- Targets: `http://localhost:9090/targets`
-- El job `promotrack-api` debe aparecer como `UP`.
+- La API expone metricas en `/actuator/prometheus`.
+- Prometheus scrapea la API usando el target interno de Docker `api:8080`.
+- Grafana se conecta a Prometheus mediante provisioning local.
+- El dashboard versionado esta en `monitoring/grafana/promotrack-dashboard.json`.
 
-Grafana:
-
-- UI: `http://localhost:3000`
-- Datasource Prometheus provisionado automaticamente.
-- Dashboard provisionado desde `monitoring/grafana/promotrack-dashboard.json`.
-- Si hiciera falta importarlo manualmente: abrir Grafana, ir a Dashboards, New, Import y cargar `monitoring/grafana/promotrack-dashboard.json`.
-
-Generar trafico de demo:
+Para generar trafico de demo:
 
 ```powershell
 .\scripts\simulate-traffic.ps1
 ```
 
-Opcionalmente se puede ajustar la cantidad de rondas:
-
-```powershell
-.\scripts\simulate-traffic.ps1 -Rounds 20 -DelayMilliseconds 100
-```
-
-Para generar errores 5xx controlados en una demo local con perfil `dev`:
+Para incluir errores 5xx controlados en perfil `dev`:
 
 ```powershell
 .\scripts\simulate-traffic.ps1 -IncludeServerErrors
 ```
 
-Metricas utiles para observar:
-
-- requests HTTP,
-- errores 4xx/5xx,
-- latencia,
-- memoria JVM,
-- CPU/proceso.
-
-PromQL sugerido:
-
-```promql
-sum(rate(http_server_requests_seconds_count[1m])) * 60
-sum(rate(http_server_requests_seconds_count{status=~"5.."}[1m])) * 60
-sum(rate(http_server_requests_seconds_sum[1m])) / sum(rate(http_server_requests_seconds_count[1m]))
-```
-
 La documentacion completa del monitoreo local esta en `docs/monitoring.md`.
 
-## URLs Utiles
-
-- API: `http://localhost:8080`
-- Swagger UI: `http://localhost:8080/swagger-ui/index.html`
-- Actuator Health: `http://localhost:8080/actuator/health`
-- Actuator Info: `http://localhost:8080/actuator/info`
-- Actuator Metrics: `http://localhost:8080/actuator/metrics`
-- Actuator Prometheus: `http://localhost:8080/actuator/prometheus`
-- Prometheus UI: `http://localhost:9090`
-- Grafana UI: `http://localhost:3000`
-- H2 Console: `http://localhost:8080/h2-console`
-
-Credenciales H2 en perfil `dev`:
-
-```text
-JDBC URL: jdbc:h2:mem:promotrack
-User Name: sa
-Password:
-```
-
-## Endpoints Principales
+## Endpoints principales
 
 Supermercados:
 
@@ -253,23 +259,85 @@ Ofertas:
 - `GET /api/offers/calendar?from=YYYY-MM-DD&to=YYYY-MM-DD`
 - `GET /api/offers/supermarket/{supermarketId}`
 
-## Perfil Dev con H2
+Soporte:
 
-El perfil activo por defecto es `dev`. En este TP se usa como baseline academico/local de demo, no como configuracion productiva. Usa una base H2 en memoria configurada en `src/main/resources/application-dev.yml`.
+- `GET /`
+- `GET /actuator/health`
+- `GET /actuator/info`
+- `GET /actuator/metrics`
+- `GET /actuator/prometheus`
 
-La configuracion actual:
+## Flujo de trabajo con Git
 
-- Usa H2 en memoria.
-- Habilita consola H2 en `/h2-console`.
-- Ejecuta `data.sql` al iniciar.
-- Usa modo compatible con PostgreSQL para facilitar una futura migracion.
-- Expone Actuator en `/actuator/health`, `/actuator/info`, `/actuator/metrics` y `/actuator/prometheus`.
+El proyecto usa un flujo simple orientado a Pull Requests:
 
-## Evolucion Opcional
+- `feature/*`: ramas para cambios puntuales.
+- `develop`: rama de integracion.
+- `main`: rama estable/final.
 
-El alcance actual cubre la API, tests, containerizacion, CI, publicacion en GHCR y monitoreo local. Como mejoras futuras, sin formar parte de la entrega principal del TP, se podria evaluar:
+Flujo recomendado:
 
-- Desplegar la API en Render u otra plataforma gratuita.
-- Agregar New Relic, APM o trazas si se busca observabilidad mas completa.
-- Separar con mas detalle perfiles `dev` y `prod`, incluyendo hardening de H2, Swagger y Actuator.
-- Versionar releases estables a partir de `main`.
+```text
+feature/* -> Pull Request a develop -> merge a develop -> Pull Request a main -> merge a main
+```
+
+Los Pull Requests permiten ejecutar CI antes de integrar cambios. La publicacion de imagen se realiza al integrar cambios en `develop` o `main`.
+
+## Decisiones tecnicas
+
+- H2 se usa como base en memoria para mantener el MVP academico simple y reproducible.
+- Dockerfile multi-stage separa build y runtime.
+- Docker Compose permite levantar API, Prometheus y Grafana con un solo comando.
+- GitHub Actions automatiza validacion y publicacion de imagen.
+- GHCR se usa como registry integrado con GitHub y trazable por tags.
+- Prometheus y Grafana cubren monitoreo local sin depender de servicios externos.
+- Swagger/OpenAPI documenta los endpoints disponibles.
+
+Kubernetes, Terraform, PostgreSQL, Render, New Relic, APM y OpenTelemetry no forman parte de la implementacion actual. Quedan como roadmap futuro para no sobredimensionar el TP.
+
+## Perfil dev con H2
+
+El perfil activo por defecto es `dev`. Esta configuracion es un baseline academico/local, no una configuracion productiva.
+
+Configuracion actual:
+
+- H2 en memoria;
+- consola H2 en `/h2-console`;
+- datos iniciales desde `data.sql`;
+- modo compatible con PostgreSQL para facilitar una futura migracion;
+- Actuator limitado a `health`, `info`, `metrics` y `prometheus`.
+
+Credenciales H2 en perfil `dev`:
+
+```text
+JDBC URL: jdbc:h2:mem:promotrack
+User Name: sa
+Password:
+```
+
+## Evidencias para defensa
+
+Checklist sugerida:
+
+- GitHub Actions de CI en verde.
+- Workflow de publicacion en GHCR en verde.
+- Imagen publicada en `ghcr.io/chochi1250/promotrack-api`.
+- `docker pull` funcionando.
+- `docker run` funcionando desde la imagen publicada.
+- `/actuator/health` respondiendo `UP`.
+- Swagger UI funcionando.
+- Prometheus con target `promotrack-api` en estado `UP`.
+- Grafana mostrando metricas luego de generar trafico.
+
+## Roadmap futuro
+
+Mejoras posibles fuera del alcance principal de esta entrega:
+
+- migrar de H2 a PostgreSQL;
+- desplegar en Render u otro servicio cloud gratuito;
+- agregar New Relic o una herramienta APM;
+- incorporar OpenTelemetry para trazas;
+- evaluar Kubernetes para orquestacion;
+- gestionar infraestructura con Terraform;
+- agregar paginacion, busqueda o mas filtros funcionales si el dominio crece;
+- separar con mas detalle perfiles `dev` y `prod`.
