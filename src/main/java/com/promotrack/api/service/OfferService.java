@@ -114,11 +114,16 @@ public class OfferService {
 
     @Transactional(readOnly = true)
     public List<Offer> findExpiringSoonOffers() {
+        return findExpiringSoonOffers(EXPIRING_SOON_DAYS);
+    }
+
+    @Transactional(readOnly = true)
+    public List<Offer> findExpiringSoonOffers(int days) {
         LocalDate today = today();
         return offerRepository.findByActiveTrueAndStartDateLessThanEqualAndEndDateBetween(
                 today,
                 today,
-                today.plusDays(EXPIRING_SOON_DAYS)
+                today.plusDays(days)
         );
     }
 

@@ -157,11 +157,41 @@ class OfferControllerTest {
 
     @Test
     void expiringSoonReturnsExpiringSoonOffers() throws Exception {
-        when(offerService.findExpiringSoonOffers()).thenReturn(List.of(offer(1L, "Oferta por vencer")));
+        when(offerService.findExpiringSoonOffers(3)).thenReturn(List.of(offer(1L, "Oferta por vencer")));
 
         mockMvc.perform(get("/api/offers/expiring-soon"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].title").value("Oferta por vencer"));
+    }
+
+    @Test
+    void expiringSoonReturnsOffersWithCustomDays() throws Exception {
+        when(offerService.findExpiringSoonOffers(7)).thenReturn(List.of(offer(1L, "Oferta por vencer en 7 dias")));
+
+        mockMvc.perform(get("/api/offers/expiring-soon")
+                        .param("days", "7"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].title").value("Oferta por vencer en 7 dias"));
+    }
+
+    @Test
+    void expiringSoonReturnsBadRequestWhenDaysIsTooLow() throws Exception {
+        mockMvc.perform(get("/api/offers/expiring-soon")
+                        .param("days", "0"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.title").value("Validation failed"))
+                .andExpect(jsonPath("$.path").value("/api/offers/expiring-soon"));
+    }
+
+    @Test
+    void expiringSoonReturnsBadRequestWhenDaysIsTooHigh() throws Exception {
+        mockMvc.perform(get("/api/offers/expiring-soon")
+                        .param("days", "31"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.title").value("Validation failed"))
+                .andExpect(jsonPath("$.path").value("/api/offers/expiring-soon"));
     }
 
     @Test
