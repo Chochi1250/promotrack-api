@@ -275,6 +275,9 @@ Ofertas:
 
 El parametro `days` de `/api/offers/expiring-soon` es opcional. Si no se informa, usa `3` dias por defecto. El rango permitido es `1..30`.
 
+<<<<<<< HEAD
+El parametro `days` de `/api/offers/expiring-soon` es opcional. Si no se informa, usa `3` dias por defecto. El rango permitido es `1..30`.
+
 Soporte:
 
 - `GET /`
@@ -293,6 +296,26 @@ El proyecto usa un flujo simple orientado a Pull Requests:
 
 Flujo recomendado:
 
+=======
+Soporte:
+
+- `GET /`
+- `GET /actuator/health`
+- `GET /actuator/info`
+- `GET /actuator/metrics`
+- `GET /actuator/prometheus`
+
+## Flujo de trabajo con Git
+
+El proyecto usa un flujo simple orientado a Pull Requests:
+
+- `feature/*`: ramas para cambios puntuales.
+- `develop`: rama de integracion.
+- `main`: rama estable/final.
+
+Flujo recomendado:
+
+>>>>>>> develop
 ```text
 feature/* -> Pull Request a develop -> merge a develop -> Pull Request a main -> merge a main
 ```
