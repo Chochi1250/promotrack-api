@@ -37,6 +37,9 @@ jobs:
       - name: Run tests
         run: ./mvnw -B clean test
 
+      - name: Package application
+        run: ./mvnw -B clean package -DskipTests
+
       - name: Set lowercase image name
         id: image
         run: |
