@@ -28,7 +28,7 @@ Backend:
 Base de datos:
 
 - PostgreSQL en Docker Compose para entorno `dev`
-- H2 en memoria para tests automatizados
+- PostgreSQL mediante Testcontainers para tests automatizados
 
 Testing:
 
@@ -75,7 +75,8 @@ Ejecutar tests:
 .\mvnw.cmd clean test
 ```
 
-Los tests usan H2 en memoria mediante el perfil `test`, por lo que no requieren PostgreSQL levantado.
+Los tests usan PostgreSQL mediante Testcontainers. No requieren una base PostgreSQL instalada manualmente ni dependen de `localhost`.
+Para ejecutarlos localmente, Docker Desktop debe estar iniciado porque Testcontainers crea un contenedor PostgreSQL efimero.
 
 Levantar la aplicacion:
 
@@ -83,7 +84,7 @@ Levantar la aplicacion:
 .\mvnw.cmd spring-boot:run
 ```
 
-El perfil por defecto es `dev`, que usa PostgreSQL. Para ejecutar la aplicacion con Maven, primero debe haber una instancia PostgreSQL disponible en `localhost:5432` o se deben configurar las variables `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME` y `SPRING_DATASOURCE_PASSWORD`.
+El perfil por defecto es `dev`, que usa PostgreSQL. Para ejecutar la aplicacion con Maven, primero debe haber una instancia PostgreSQL disponible en `localhost:5434` o se deben configurar las variables `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME` y `SPRING_DATASOURCE_PASSWORD`.
 
 URLs principales:
 
@@ -99,10 +100,16 @@ Construir la imagen local:
 docker build -t promotrack-api .
 ```
 
-Ejecutar el contenedor:
+Ejecutar el contenedor requiere una base PostgreSQL disponible. Para una prueba local simple, se puede levantar solo PostgreSQL con Docker Compose y luego ejecutar la imagen apuntando a ese servicio expuesto en `localhost:5434`:
 
 ```powershell
-docker run --rm -p 8080:8080 promotrack-api
+docker compose up -d postgres
+
+docker run --rm -p 8080:8080 `
+  -e SPRING_DATASOURCE_URL=jdbc:postgresql://host.docker.internal:5434/promotrack `
+  -e SPRING_DATASOURCE_USERNAME=promotrack `
+  -e SPRING_DATASOURCE_PASSWORD=promotrack `
+  promotrack-api
 ```
 
 Validar que la API responde:
@@ -128,7 +135,7 @@ docker compose down
 Servicios disponibles:
 
 - API: `http://localhost:8080`
-- PostgreSQL: `localhost:5432`
+- PostgreSQL: `localhost:5434`
 - Swagger UI: `http://localhost:8080/swagger-ui/index.html`
 - Prometheus: `http://localhost:9090`
 - Grafana: `http://localhost:3000`
@@ -148,6 +155,16 @@ docker compose down -v
 docker compose up --build
 ```
 
+Para conectarse desde DBeaver u otro cliente local:
+
+```text
+Host: localhost
+Port: 5434
+Database: promotrack
+User: promotrack
+Password: promotrack
+```
+
 ## CI/CD con GitHub Actions
 
 El proyecto usa GitHub Actions para separar validacion y publicacion.
@@ -157,6 +174,7 @@ Workflow de CI: `.github/workflows/ci.yml`
 - Se ejecuta en Pull Requests hacia `develop` y `main`.
 - Tambien se ejecuta en push a `develop` y `main`.
 - Valida tests con Maven Wrapper.
+- Los tests usan PostgreSQL mediante Testcontainers; no se configura un servicio PostgreSQL separado en GitHub Actions.
 - Genera el package de la aplicacion.
 - Valida la configuracion de Docker Compose.
 - Construye la imagen Docker localmente sin publicarla.
@@ -166,7 +184,8 @@ Workflow de publicacion: `.github/workflows/docker-publish.yml`
 - Se ejecuta en push a `develop`.
 - Se ejecuta en push a `main`.
 - Tambien puede ejecutarse manualmente con `workflow_dispatch`.
-- Ejecuta tests.
+- Ejecuta tests con PostgreSQL mediante Testcontainers.
+- Genera el package de la aplicacion con tests omitidos, porque ya fueron validados en el paso anterior.
 - Construye la imagen Docker.
 - Publica la imagen en GitHub Container Registry.
 
@@ -197,10 +216,16 @@ Descargar la imagen estable:
 docker pull ghcr.io/chochi1250/promotrack-api:latest
 ```
 
-Ejecutar la imagen publicada:
+Ejecutar la imagen publicada requiere una base PostgreSQL disponible. Para validar la imagen sin levantar la API desde Compose:
 
 ```powershell
-docker run --rm -p 8080:8080 ghcr.io/chochi1250/promotrack-api:latest
+docker compose up -d postgres
+
+docker run --rm -p 8080:8080 `
+  -e SPRING_DATASOURCE_URL=jdbc:postgresql://host.docker.internal:5434/promotrack `
+  -e SPRING_DATASOURCE_USERNAME=promotrack `
+  -e SPRING_DATASOURCE_PASSWORD=promotrack `
+  ghcr.io/chochi1250/promotrack-api:latest
 ```
 
 Validar healthcheck:
@@ -275,9 +300,6 @@ Ofertas:
 
 El parametro `days` de `/api/offers/expiring-soon` es opcional. Si no se informa, usa `3` dias por defecto. El rango permitido es `1..30`.
 
-<<<<<<< HEAD
-El parametro `days` de `/api/offers/expiring-soon` es opcional. Si no se informa, usa `3` dias por defecto. El rango permitido es `1..30`.
-
 Soporte:
 
 - `GET /`
@@ -296,26 +318,6 @@ El proyecto usa un flujo simple orientado a Pull Requests:
 
 Flujo recomendado:
 
-=======
-Soporte:
-
-- `GET /`
-- `GET /actuator/health`
-- `GET /actuator/info`
-- `GET /actuator/metrics`
-- `GET /actuator/prometheus`
-
-## Flujo de trabajo con Git
-
-El proyecto usa un flujo simple orientado a Pull Requests:
-
-- `feature/*`: ramas para cambios puntuales.
-- `develop`: rama de integracion.
-- `main`: rama estable/final.
-
-Flujo recomendado:
-
->>>>>>> develop
 ```text
 feature/* -> Pull Request a develop -> merge a develop -> Pull Request a main -> merge a main
 ```
@@ -324,8 +326,9 @@ Los Pull Requests permiten ejecutar CI antes de integrar cambios. La publicacion
 
 ## Decisiones tecnicas
 
-- PostgreSQL se usa en Docker Compose para representar un entorno local mas realista y reproducible.
-- H2 se mantiene para tests rapidos y aislados.
+- PostgreSQL se usa como base estandar del proyecto.
+- Docker Compose provee PostgreSQL para el entorno local `dev`.
+- Testcontainers provee PostgreSQL efimero para tests automatizados, sin depender de una base instalada manualmente.
 - Dockerfile multi-stage separa build y runtime.
 - Docker Compose permite levantar API, PostgreSQL, Prometheus y Grafana con un solo comando.
 - GitHub Actions automatiza validacion y publicacion de imagen.
@@ -343,9 +346,9 @@ Perfil `dev`:
 
 - usa PostgreSQL;
 - en Docker Compose se conecta a `postgres:5432`;
-- fuera de Docker Compose se conecta por defecto a `localhost:5432`;
+- fuera de Docker Compose se conecta por defecto a `localhost:5434`;
 - toma credenciales desde variables de entorno;
-- carga datos iniciales desde `data-postgres.sql`;
+- carga datos iniciales desde `data.sql`;
 - Actuator limitado a `health`, `info`, `metrics` y `prometheus`.
 
 Variables usadas por el perfil `dev`:
@@ -358,10 +361,11 @@ SPRING_DATASOURCE_PASSWORD
 
 Perfil `test`:
 
-- usa H2 en memoria;
-- no requiere servicios externos;
+- usa PostgreSQL mediante Testcontainers;
+- no requiere PostgreSQL instalado localmente;
+- no depende de puertos fijos como `localhost:5432` o `localhost:5434`;
 - carga datos iniciales desde `data.sql`;
-- mantiene los tests rapidos y aislados.
+- valida contra el mismo motor de base de datos que el entorno local.
 
 ## Evidencias para defensa
 
@@ -371,7 +375,7 @@ Checklist sugerida:
 - Workflow de publicacion en GHCR en verde.
 - Imagen publicada en `ghcr.io/chochi1250/promotrack-api`.
 - `docker pull` funcionando.
-- `docker run` funcionando desde la imagen publicada.
+- `docker run` funcionando desde la imagen publicada, conectado a PostgreSQL.
 - `/actuator/health` respondiendo `UP`.
 - Swagger UI funcionando.
 - Prometheus con target `promotrack-api` en estado `UP`.
