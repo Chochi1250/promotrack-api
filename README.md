@@ -12,6 +12,7 @@ El proyecto funciona como aplicacion base para aplicar practicas DevOps sobre un
 - publicar una imagen Docker en GitHub Container Registry;
 - exponer healthchecks y metricas con Spring Actuator;
 - recolectar y visualizar metricas con Prometheus y Grafana;
+- desplegar una demo academica minima en Render;
 - documentar el flujo de entrega y las decisiones tecnicas.
 
 ## Stack tecnologico
@@ -43,6 +44,7 @@ DevOps / CI/CD:
 - Docker Compose
 - GitHub Actions
 - GitHub Container Registry
+- Render para demo academica mediante deploy hook
 
 Observabilidad:
 
@@ -167,12 +169,12 @@ Password: promotrack
 
 ## CI/CD con GitHub Actions
 
-El proyecto usa GitHub Actions para separar validacion y publicacion.
+El proyecto usa GitHub Actions para separar validacion, publicacion de imagen y deploy academico por release tag.
 
 Workflow de CI: `.github/workflows/ci.yml`
 
 - Se ejecuta en Pull Requests hacia `develop` y `main`.
-- Tambien se ejecuta en push a `develop` y `main`.
+- Tambien puede ejecutarse manualmente con `workflow_dispatch`.
 - Valida tests con Maven Wrapper.
 - Los tests usan PostgreSQL mediante Testcontainers; no se configura un servicio PostgreSQL separado en GitHub Actions.
 - Genera el package de la aplicacion.
@@ -189,11 +191,22 @@ Workflow de publicacion: `.github/workflows/docker-publish.yml`
 - Construye la imagen Docker.
 - Publica la imagen en GitHub Container Registry.
 
+Workflow de release y deploy demo: `.github/workflows/release.yml`
+
+- Se ejecuta al pushear tags semver con formato `vX.Y.Z`.
+- Ejecuta tests con PostgreSQL mediante Testcontainers.
+- Genera el package de la aplicacion con tests omitidos, porque ya fueron validados en el paso anterior.
+- Construye y publica la imagen Docker en GitHub Container Registry.
+- Crea una GitHub Release con `GITHUB_TOKEN`.
+- Dispara el deploy en Render mediante el secret `RENDER_DEPLOY_HOOK_URL`.
+
 Flujo esperado:
 
 ```text
-feature branch -> Pull Request -> CI -> develop -> imagen :develop
-develop -> Pull Request -> CI -> main -> imagen :latest
+feature branch -> Pull Request a develop -> CI sin publicacion
+merge a develop -> imagen :develop y :develop-<sha>
+merge a main -> imagen :latest y :main-<sha>
+tag vX.Y.Z -> imagen :vX.Y.Z, :X.Y, :X, :sha-<sha> -> GitHub Release -> Render deploy hook
 ```
 
 ## Publicacion en GitHub Container Registry
@@ -207,8 +220,19 @@ ghcr.io/chochi1250/promotrack-api
 Tags usados:
 
 - `develop`: imagen de integracion generada desde la rama `develop`.
+- `develop-<sha>`: imagen de integracion trazable a un commit.
 - `latest`: imagen estable generada desde la rama `main`.
-- SHA corto: tag asociado al commit para trazabilidad.
+- `main-<sha>`: imagen estable trazable a un commit.
+- `vX.Y.Z`: imagen de release generada desde un tag semver.
+- `X.Y` y `X`: alias semver para la ultima release de una linea mayor o menor.
+- `sha-<sha>`: tag de release asociado al commit para trazabilidad.
+
+Crear una release tag:
+
+```powershell
+git tag v1.0.0
+git push origin v1.0.0
+```
 
 Descargar la imagen estable:
 
@@ -239,6 +263,48 @@ Para validar una imagen de integracion:
 ```powershell
 docker pull ghcr.io/chochi1250/promotrack-api:develop
 ```
+
+## Deploy academico en Render
+
+Render se usa solo como bonus academico para publicar una demo accesible de la API. No reemplaza el entorno local con Docker Compose, no incluye Prometheus/Grafana administrados y no se presenta como una configuracion de produccion real.
+
+La aplicacion es compatible con el puerto dinamico de Render mediante:
+
+```yaml
+server.port: ${PORT:8080}
+```
+
+Configuracion sugerida en Render:
+
+- crear un Web Service desde el repositorio o desde la imagen Docker publicada en GHCR;
+- si se usa GHCR, apuntar el servicio a un tag de release estable como `ghcr.io/chochi1250/promotrack-api:1` o `ghcr.io/chochi1250/promotrack-api:1.0`;
+- usar el Dockerfile del proyecto;
+- configurar el healthcheck en `/actuator/health`;
+- usar una base PostgreSQL administrada de Render o una PostgreSQL externa;
+- crear un deploy hook y guardar su URL como secret `RENDER_DEPLOY_HOOK_URL` en GitHub;
+- no levantar Docker Compose en Render.
+
+Variables de entorno necesarias:
+
+```text
+SPRING_PROFILES_ACTIVE=render
+SPRING_DATASOURCE_URL=jdbc:postgresql://<host>:<port>/<database>
+SPRING_DATASOURCE_USERNAME=<usuario>
+SPRING_DATASOURCE_PASSWORD=<password>
+```
+
+Render define `PORT` automaticamente. Si se ejecuta fuera de Render y `PORT` no existe, la API mantiene `8080`.
+
+El perfil `render` es minimo: usa PostgreSQL por variables de entorno, no carga `data.sql`, no expone el endpoint interno de demo del perfil `dev` y usa `spring.jpa.hibernate.ddl-auto=update` para permitir una demo simple sin Flyway. Esta decision es aceptable para el alcance academico del TP, pero no reemplaza migraciones versionadas en un entorno productivo.
+
+El deploy hacia Render se dispara solo al publicar un tag semver `vX.Y.Z`. Los Pull Requests y los merges a `develop` o `main` no despliegan en Render.
+
+Limitaciones del plan gratuito:
+
+- puede haber cold start o spin down despues de inactividad;
+- la primera respuesta puede demorar mas;
+- los recursos son acotados;
+- la base PostgreSQL debe configurarse aparte y respetar las restricciones del plan elegido.
 
 ## Healthcheck y Actuator
 
@@ -320,9 +386,10 @@ Flujo recomendado:
 
 ```text
 feature/* -> Pull Request a develop -> merge a develop -> Pull Request a main -> merge a main
+main -> tag vX.Y.Z -> GitHub Release -> deploy demo en Render
 ```
 
-Los Pull Requests permiten ejecutar CI antes de integrar cambios. La publicacion de imagen se realiza al integrar cambios en `develop` o `main`.
+Los Pull Requests permiten ejecutar CI antes de integrar cambios. La publicacion de imagen se realiza al integrar cambios en `develop` o `main`. El deploy academico en Render queda reservado para tags de release.
 
 ## Decisiones tecnicas
 
@@ -333,10 +400,11 @@ Los Pull Requests permiten ejecutar CI antes de integrar cambios. La publicacion
 - Docker Compose permite levantar API, PostgreSQL, Prometheus y Grafana con un solo comando.
 - GitHub Actions automatiza validacion y publicacion de imagen.
 - GHCR se usa como registry integrado con GitHub y trazable por tags.
+- Render se usa como despliegue de demo academica disparado por deploy hook desde un tag semver.
 - Prometheus y Grafana cubren monitoreo local sin depender de servicios externos.
 - Swagger/OpenAPI documenta los endpoints disponibles.
 
-Kubernetes, Terraform, Render, New Relic, APM y OpenTelemetry no forman parte de la implementacion actual. Quedan como roadmap futuro para no sobredimensionar el TP.
+Kubernetes, Terraform, New Relic, APM y OpenTelemetry no forman parte de la implementacion actual. Quedan como roadmap futuro para no sobredimensionar el TP.
 
 ## Perfiles de base de datos
 
@@ -359,6 +427,25 @@ SPRING_DATASOURCE_USERNAME
 SPRING_DATASOURCE_PASSWORD
 ```
 
+Perfil `render`:
+
+- usa PostgreSQL administrado o externo;
+- toma conexion y credenciales desde variables de entorno;
+- toma el puerto desde `PORT`, con fallback local a `8080`;
+- no depende de Docker Compose;
+- no carga datos iniciales desde `data.sql`;
+- mantiene Actuator limitado a `health`, `info`, `metrics` y `prometheus`.
+
+Variables usadas por el perfil `render`:
+
+```text
+SPRING_PROFILES_ACTIVE=render
+SPRING_DATASOURCE_URL
+SPRING_DATASOURCE_USERNAME
+SPRING_DATASOURCE_PASSWORD
+PORT
+```
+
 Perfil `test`:
 
 - usa PostgreSQL mediante Testcontainers;
@@ -373,9 +460,12 @@ Checklist sugerida:
 
 - GitHub Actions de CI en verde.
 - Workflow de publicacion en GHCR en verde.
+- Workflow de release en verde para un tag semver `vX.Y.Z`.
 - Imagen publicada en `ghcr.io/chochi1250/promotrack-api`.
 - `docker pull` funcionando.
 - `docker run` funcionando desde la imagen publicada, conectado a PostgreSQL.
+- Deploy hook de Render configurado como secret `RENDER_DEPLOY_HOOK_URL`.
+- Demo academica en Render respondiendo `/actuator/health`.
 - `/actuator/health` respondiendo `UP`.
 - Swagger UI funcionando.
 - Prometheus con target `promotrack-api` en estado `UP`.
@@ -386,7 +476,7 @@ Checklist sugerida:
 Mejoras posibles fuera del alcance principal de esta entrega:
 
 - agregar Flyway para versionar migraciones de base de datos;
-- desplegar en Render u otro servicio cloud gratuito;
+- evaluar entornos separados de deploy para staging y produccion real;
 - agregar New Relic o una herramienta APM;
 - incorporar OpenTelemetry para trazas;
 - evaluar Kubernetes para orquestacion;
