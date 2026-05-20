@@ -1,12 +1,10 @@
-name: Release - GHCR and Render
+name: Manual Deploy - Render
 
 on:
-  push:
-    tags:
-      - 'v*.*.*'
+  workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
   packages: write
 
 env:
@@ -14,21 +12,18 @@ env:
   IMAGE_NAME: chochi1250/promotrack-api
 
 jobs:
-  release:
-    name: Test, Publish, Release and Deploy
+  deploy:
+    name: Test, Publish and Deploy to Render
     runs-on: ubuntu-latest
     timeout-minutes: 20
+
+    concurrency:
+      group: render-manual-deploy
+      cancel-in-progress: false
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
-      - name: Validate semver tag
-        run: |
-          if [[ ! "${GITHUB_REF_NAME}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "Tag '${GITHUB_REF_NAME}' must match vX.Y.Z"
-            exit 1
-          fi
 
       - name: Set up Java 25
         uses: actions/setup-java@v4
@@ -46,6 +41,13 @@ jobs:
       - name: Package application
         run: ./mvnw -B clean package -DskipTests
 
+      - name: Set manual image tag
+        id: image
+        run: |
+          SHORT_SHA="${GITHUB_SHA::7}"
+          echo "tag=render-manual-${SHORT_SHA}" >> "$GITHUB_OUTPUT"
+          echo "url=${REGISTRY}/${IMAGE_NAME}:render-manual-${SHORT_SHA}" >> "$GITHUB_OUTPUT"
+
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
         with:
@@ -59,10 +61,7 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
-            type=ref,event=tag
-            type=semver,pattern={{major}}.{{minor}}
-            type=semver,pattern={{major}},enable=true
-            type=sha,prefix=sha-,format=short
+            type=raw,value=${{ steps.image.outputs.tag }}
 
       - name: Build and publish Docker image
         uses: docker/build-push-action@v6
@@ -73,26 +72,10 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
 
-      - name: Create GitHub Release
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAG_NAME: ${{ github.ref_name }}
-          IMAGE_TAGS: ${{ steps.meta.outputs.tags }}
-        run: |
-          {
-            echo "Docker images published to GHCR:"
-            echo ""
-            echo "$IMAGE_TAGS"
-          } > release-notes.md
-
-          gh release create "$TAG_NAME" \
-            --title "PromoTrack API $TAG_NAME" \
-            --notes-file release-notes.md
-
       - name: Trigger Render deploy hook
         env:
           RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
-          RENDER_IMAGE_URL: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}
+          RENDER_IMAGE_URL: ${{ steps.image.outputs.url }}
         run: |
           if [ -z "$RENDER_DEPLOY_HOOK_URL" ]; then
             echo "Missing required secret RENDER_DEPLOY_HOOK_URL"
