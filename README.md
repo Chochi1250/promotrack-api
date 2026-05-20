@@ -321,6 +321,49 @@ El perfil `render` es minimo: usa PostgreSQL por variables de entorno, no carga 
 
 El deploy hacia Render puede dispararse al publicar un tag semver `vX.Y.Z` o al ejecutar manualmente el workflow `Manual Deploy - Render`. En ambos casos GitHub Actions publica la imagen en GHCR y Render despliega la imagen concreta recibida por `imgURL`. Los Pull Requests y los merges a `develop` o `main` no despliegan en Render por si solos.
 
+### Datos demo manuales en Render PostgreSQL
+
+Render no carga `src/main/resources/data.sql` en el perfil `render`, porque `spring.sql.init.mode=never` evita insertar datos automaticamente en cada deploy. Para poblar la demo academica una sola vez se versiona el script manual:
+
+```text
+docs/db/render-seed.sql
+```
+
+Conexion recomendada:
+
+- Para la aplicacion en Render, usar la Internal Database URL de Render como referencia de host, puerto, base y credenciales, configurada en formato JDBC en `SPRING_DATASOURCE_URL`: `jdbc:postgresql://<internal-host>:<port>/<database>`.
+- Para DBeaver, `psql` u otro cliente local, usar la External Database URL de Render. La URL interna solo funciona dentro de la red privada de Render.
+- Mantener `SPRING_DATASOURCE_USERNAME` y `SPRING_DATASOURCE_PASSWORD` con las credenciales de la base PostgreSQL correspondiente.
+
+Ejecutar el seed desde una terminal local con `psql`:
+
+```powershell
+psql "<external-database-url-de-render>" -f docs/db/render-seed.sql
+```
+
+Tambien puede ejecutarse desde DBeaver abriendo una consola SQL conectada con la External Database URL y corriendo el contenido de `docs/db/render-seed.sql`.
+
+El script usa `CURRENT_DATE`, fechas relativas y `INSERT ... WHERE NOT EXISTS` para evitar duplicados de los datos demo. No usa IDs explicitos, por lo que no requiere ajustar secuencias y no modifica registros existentes.
+
+Consultas de verificacion:
+
+```sql
+SELECT COUNT(*) FROM supermarkets;
+SELECT COUNT(*) FROM offers;
+SELECT * FROM supermarkets;
+SELECT * FROM offers;
+```
+
+Validaciones funcionales despues del seed:
+
+```text
+GET /api/supermarkets
+GET /api/offers
+GET /api/offers/today
+GET /api/offers/upcoming
+GET /api/offers/expiring-soon?days=7
+```
+
 Limitaciones del plan gratuito:
 
 - puede haber cold start o spin down despues de inactividad;
