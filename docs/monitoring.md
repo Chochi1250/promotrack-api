@@ -98,9 +98,87 @@ Para validar Grafana, abrir `http://localhost:3000`, entrar a Dashboards y busca
 
 Si el dashboard no aparece porque se esta usando una instancia externa de Grafana, se puede importar manualmente desde Dashboards, New, Import, cargando `monitoring/grafana/promotrack-dashboard.json`.
 
+## Monitoreo en Render con New Relic APM
+
+New Relic APM complementa el monitoreo local. Prometheus y Grafana demuestran un stack reproducible con Docker Compose; New Relic observa la aplicacion publica desplegada en Render.
+
+La imagen Docker incluye el New Relic Java Agent en:
+
+```text
+/opt/newrelic/newrelic.jar
+```
+
+El agent queda inactivo por defecto. No se define `JAVA_TOOL_OPTIONS` en el Dockerfile ni en Docker Compose, por lo que el entorno local y los tests no envian datos a New Relic.
+
+Para activarlo en Render, configurar estas variables de entorno en el Web Service:
+
+```text
+NEW_RELIC_LICENSE_KEY=<secret>
+NEW_RELIC_APP_NAME=PromoTrack API Render
+NEW_RELIC_LOG_FILE_NAME=STDOUT
+JAVA_TOOL_OPTIONS=-javaagent:/opt/newrelic/newrelic.jar
+```
+
+`NEW_RELIC_LICENSE_KEY` debe cargarse solo en Render. No debe commitearse ni agregarse al Dockerfile, README, workflows o archivos `.env` versionados.
+
+La integracion agrega instrumentacion custom minima con New Relic Java API en consultas de lectura relevantes:
+
+- ofertas del dia;
+- ofertas proximas;
+- ofertas proximas a vencer;
+- listado de supermercados.
+
+Los atributos custom son de baja cardinalidad y no contienen datos sensibles:
+
+- `business.operation`
+- `filter.days`
+- `result.count`
+
+No se registran payloads completos, nombres de usuarios, credenciales, cadenas de conexion ni datos personales.
+
+## Validar New Relic en Render
+
+Pasos sugeridos:
+
+1. Publicar una nueva imagen en GHCR con el Dockerfile actualizado.
+2. Ejecutar el workflow manual de deploy a Render o publicar un tag de release.
+3. Confirmar que Render redeploya correctamente la imagen.
+4. Revisar los logs de Render y buscar el arranque del Java agent.
+5. Abrir New Relic APM y confirmar que aparece la aplicacion `PromoTrack API Render`.
+6. Generar trafico contra la URL publica de Render.
+7. Revisar transacciones web, latencia, errores 4xx controlados, throughput y trazas de metodos instrumentados.
+
+Ejemplo de trafico seguro contra Render:
+
+```powershell
+.\scripts\simulate-traffic.ps1 -BaseUrl https://<tu-servicio>.onrender.com -RenderSafe -Rounds 20 -RequestsPerRound 10 -DelayMilliseconds 150
+```
+
+`-RenderSafe` evita usar endpoints internos del perfil `dev` y genera solo errores 4xx controlados mediante parametros invalidos como `days=0` y `days=31`.
+
+Capturas recomendadas para la defensa:
+
+- Render con deploy exitoso y variables de entorno configuradas sin revelar el valor de `NEW_RELIC_LICENSE_KEY`.
+- Logs de Render mostrando que la aplicacion arranco correctamente con `JAVA_TOOL_OPTIONS`.
+- New Relic APM Summary con throughput, response time y error rate.
+- Transactions con endpoints como `/api/offers/today`, `/api/offers/upcoming`, `/api/offers/expiring-soon` y `/api/supermarkets`.
+- Trace details mostrando segmentos de service y atributos custom como `business.operation`, `filter.days` y `result.count`.
+
+Rollback rapido:
+
+1. Eliminar o vaciar `JAVA_TOOL_OPTIONS` en Render.
+2. Redeployar el servicio.
+3. Confirmar que la API sigue respondiendo y que ya no se carga el Java agent.
+
+Rollback completo:
+
+1. Revertir el bloque del Dockerfile que descarga y copia `/opt/newrelic`.
+2. Revertir la dependencia `newrelic-api` y las anotaciones `@Trace` si se desea remover toda la instrumentacion custom.
+3. Publicar y desplegar una nueva imagen.
+
 ## Trafico de demo
 
-El script `scripts/simulate-traffic.ps1` genera requests de lectura contra endpoints validos y algunos 404 controlados. Sirve para que Prometheus y Grafana muestren trafico durante una demo.
+El script `scripts/simulate-traffic.ps1` genera requests de lectura contra endpoints validos y errores 4xx controlados. Sirve para que Prometheus, Grafana y New Relic muestren trafico durante una demo.
 
 Ejecutar:
 
@@ -113,6 +191,7 @@ Opciones utiles:
 ```powershell
 .\scripts\simulate-traffic.ps1 -Rounds 20 -DelayMilliseconds 100
 .\scripts\simulate-traffic.ps1 -BaseUrl http://localhost:8080
+.\scripts\simulate-traffic.ps1 -BaseUrl https://<tu-servicio>.onrender.com -RenderSafe
 ```
 
 Para validar el panel de errores 5xx, el perfil `dev` incluye el endpoint interno `GET /internal/demo/error`. No es una funcionalidad de negocio: solo lanza un error controlado para que el `GlobalExceptionHandler` devuelva un 500 generico y Prometheus registre la metrica. Se puede incluir en la simulacion con:
@@ -234,7 +313,7 @@ Metricas son valores numericos medidos en el tiempo. Permiten ver tendencias, de
 
 Logs son eventos registrados por la aplicacion. Sirven para entender que paso en un momento especifico.
 
-Traces representan el recorrido de una solicitud entre componentes. Son utiles en sistemas distribuidos, pero no se implementan en esta version porque PromoTrack API es una aplicacion simple.
+Traces representan el recorrido de una solicitud entre componentes. En el stack local no se agrega tracing distribuido; en Render, New Relic APM puede mostrar transacciones web y segmentos de metodos instrumentados para las consultas principales.
 
 Latency mide cuanto tarda una operacion o request en responder.
 
@@ -246,10 +325,12 @@ Saturation mide que tan cerca esta el sistema de agotar sus recursos, por ejempl
 
 ## Justificacion para el TP
 
-Prometheus y Grafana son una combinacion simple y defendible para este trabajo: la API expone metricas, Prometheus las recolecta y Grafana las visualiza. Todo corre localmente con Docker Compose, sin Kubernetes, tracing distribuido, APM externo ni secretos versionados.
+Prometheus y Grafana son una combinacion simple y defendible para este trabajo: la API expone metricas, Prometheus las recolecta y Grafana las visualiza. Todo corre localmente con Docker Compose, sin Kubernetes ni secretos versionados.
 
 La solucion mantiene bajo acoplamiento: si el monitoreo se apaga, la API sigue funcionando; si la API evoluciona, el contrato principal de monitoreo sigue siendo `/actuator/prometheus`.
 
+New Relic agrega una segunda mirada para la demo desplegada en Render: APM real sobre la aplicacion publica, transacciones HTTP, latencia, errores, throughput y trazas de metodos de negocio instrumentados. Esta integracion tambien queda desacoplada porque se activa solo con variables de entorno del servicio Render.
+
 ## Evolucion opcional
 
-New Relic, APM o trazas pueden quedar como evolucion futura para centralizar metricas, dashboards, errores y recorridos de requests. No forman parte de la version actual porque agregarian complejidad innecesaria para el alcance academico del proyecto.
+Como evolucion futura se puede agregar alerting formal sobre New Relic o Grafana Cloud, SLOs, dashboards compartidos por ambiente y OpenTelemetry si el proyecto crece hacia mas servicios.
