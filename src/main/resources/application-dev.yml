@@ -1,13 +1,9 @@
 spring:
   datasource:
-    url: jdbc:h2:mem:promotrack;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH
-    driver-class-name: org.h2.Driver
-    username: sa
-    password:
-  h2:
-    console:
-      enabled: true
-      path: /h2-console
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5434/promotrack}
+    driver-class-name: org.postgresql.Driver
+    username: ${SPRING_DATASOURCE_USERNAME:promotrack}
+    password: ${SPRING_DATASOURCE_PASSWORD:promotrack}
   jpa:
     hibernate:
       ddl-auto: create-drop
@@ -19,6 +15,7 @@ spring:
   sql:
     init:
       mode: always
+      data-locations: classpath:data.sql
 
 logging:
   level:

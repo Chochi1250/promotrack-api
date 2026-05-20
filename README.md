@@ -1,85 +1,117 @@
 # PromoTrack API
 
-PromoTrack API es una API REST para gestionar supermercados y ofertas de supermercados argentinos.
+PromoTrack API es una API REST academica desarrollada con Java y Spring Boot para gestionar supermercados y ofertas. La aplicacion es simple a proposito: el foco del Trabajo Practico de DevOps esta en demostrar automatizacion, contenedores, CI/CD, publicacion de imagen Docker, monitoreo y documentacion tecnica defendible.
 
-## Objetivo en el TP DevOps
+## Objetivo del TP
 
-Este proyecto forma parte de un Trabajo Practico Integrador de DevOps. La API funciona como aplicacion base para aplicar practicas de desarrollo, testing, containerizacion, CI/CD, publicacion de imagen Docker y monitoreo.
+El proyecto funciona como aplicacion base para aplicar practicas DevOps sobre un backend real pero acotado:
 
-## Stack
+- validar cambios automaticamente con GitHub Actions;
+- construir y ejecutar la aplicacion con Docker;
+- levantar un entorno local reproducible con Docker Compose;
+- publicar una imagen Docker en GitHub Container Registry;
+- exponer healthchecks y metricas con Spring Actuator;
+- recolectar y visualizar metricas con Prometheus y Grafana;
+- desplegar una demo academica minima en Render;
+- documentar el flujo de entrega y las decisiones tecnicas.
+
+## Stack tecnologico
+
+Backend:
 
 - Java 25
 - Spring Boot 4.0.6
 - Spring Web / MVC
 - Spring Data JPA
-- H2 Database para MVP
 - Bean Validation
+- Springdoc OpenAPI / Swagger UI
+
+Base de datos:
+
+- PostgreSQL en Docker Compose para entorno `dev`
+- PostgreSQL mediante Testcontainers para tests automatizados
+
+Testing:
+
+- JUnit
+- Mockito
+- MockMvc
+- Maven Wrapper
+
+DevOps / CI/CD:
+
+- Docker
+- Docker Compose
+- GitHub Actions
+- GitHub Container Registry
+- Render para demo academica mediante deploy hook
+
+Observabilidad:
+
 - Spring Boot Actuator
 - Micrometer Prometheus Registry
 - Prometheus
 - Grafana
-- Springdoc OpenAPI / Swagger UI
-- JUnit, Mockito y MockMvc
-- Maven Wrapper
 
-## Ejecutar Localmente
+## Funcionalidades principales
 
-Desde la raiz del proyecto:
+La API permite gestionar un catalogo basico de supermercados y ofertas:
 
-```powershell
-.\mvnw.cmd spring-boot:run
-```
+- alta, consulta, actualizacion y baja logica de supermercados;
+- alta, consulta, actualizacion y baja logica de ofertas;
+- consulta de ofertas activas;
+- consulta de ofertas del dia;
+- consulta de ofertas futuras;
+- consulta de ofertas proximas a vencer, con rango configurable entre 1 y 30 dias;
+- consulta de ofertas por rango de fechas;
+- consulta de ofertas por supermercado;
+- validacion de requests con Bean Validation;
+- respuestas de error centralizadas;
+- documentacion OpenAPI disponible con Swagger UI.
 
-La aplicacion queda disponible en:
+## Ejecucion local con Maven
 
-```text
-http://localhost:8080
-```
-
-## Correr Tests
+Ejecutar tests:
 
 ```powershell
 .\mvnw.cmd clean test
 ```
 
-## Integracion Continua
+Los tests usan PostgreSQL mediante Testcontainers. No requieren una base PostgreSQL instalada manualmente ni dependen de `localhost`.
+Para ejecutarlos localmente, Docker Desktop debe estar iniciado porque Testcontainers crea un contenedor PostgreSQL efimero.
 
-El proyecto incluye un workflow de GitHub Actions en `.github/workflows/ci.yml`.
-
-La CI se ejecuta en `push` y `pull_request` hacia `develop` y `main`. Valida:
-
-- Tests con Maven Wrapper.
-- Build del paquete con Maven.
-- Construccion de la imagen Docker sin publicarla.
-
-## Publicacion de Imagen Docker en GHCR
-
-La publicacion de imagen Docker permite construir la API como una imagen versionada y subirla a un registry para que pueda descargarse y ejecutarse desde otros entornos.
-
-Este proyecto publica la imagen automaticamente en GitHub Container Registry mediante el workflow `.github/workflows/docker-publish.yml`. El workflow corre en `push` a `develop`, `push` a `main` y tambien puede ejecutarse manualmente con `workflow_dispatch`. No publica imagenes desde `pull_request`.
-
-La imagen queda publicada en:
-
-```text
-ghcr.io/<owner>/promotrack-api
-```
-
-Tags publicados:
-
-- `develop`: cuando el workflow corre sobre la rama `develop`.
-- `latest`: cuando el workflow corre sobre la rama `main`.
-- `<sha>`: commit SHA corto para trazabilidad.
-
-Descargar la imagen publicada:
+Levantar la aplicacion:
 
 ```powershell
-docker pull ghcr.io/<owner>/promotrack-api:latest
+.\mvnw.cmd spring-boot:run
 ```
 
-Ejecutar la imagen publicada:
+El perfil por defecto es `dev`, que usa PostgreSQL. Para ejecutar la aplicacion con Maven, primero debe haber una instancia PostgreSQL disponible en `localhost:5434` o se deben configurar las variables `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME` y `SPRING_DATASOURCE_PASSWORD`.
+
+URLs principales:
+
+- API: `http://localhost:8080`
+- Swagger UI: `http://localhost:8080/swagger-ui/index.html`
+- Healthcheck: `http://localhost:8080/actuator/health`
+
+## Ejecucion con Docker
+
+Construir la imagen local:
 
 ```powershell
-docker run --rm -p 8080:8080 ghcr.io/<owner>/promotrack-api:latest
+docker build -t promotrack-api .
+```
+
+Ejecutar el contenedor requiere una base PostgreSQL disponible. Para una prueba local simple, se puede levantar solo PostgreSQL con Docker Compose y luego ejecutar la imagen apuntando a ese servicio expuesto en `localhost:5434`:
+
+```powershell
+docker compose up -d postgres
+
+docker run --rm -p 8080:8080 `
+  -e SPRING_DATASOURCE_URL=jdbc:postgresql://host.docker.internal:5434/promotrack `
+  -e SPRING_DATASOURCE_USERNAME=promotrack `
+  -e SPRING_DATASOURCE_PASSWORD=promotrack `
+  promotrack-api
 ```
 
 Validar que la API responde:
@@ -88,47 +120,29 @@ Validar que la API responde:
 Invoke-RestMethod http://localhost:8080/actuator/health
 ```
 
-## Docker
+## Ejecucion con Docker Compose
 
-Construir la imagen:
-
-```powershell
-docker build -t promotrack-api .
-```
-
-Ejecutar el contenedor:
-
-```powershell
-docker run -p 8080:8080 promotrack-api
-```
-
-Validar que el contenedor responde:
-
-```powershell
-Invoke-RestMethod http://localhost:8080/actuator/health
-```
-
-Tambien se puede abrir Swagger UI en el navegador:
-
-```text
-http://localhost:8080/swagger-ui/index.html
-```
-
-## Docker Compose
-
-Construir y levantar la API con Prometheus y Grafana:
+Docker Compose levanta un entorno local reproducible con la API, PostgreSQL, Prometheus y Grafana:
 
 ```powershell
 docker compose up --build
 ```
 
-Detener y remover el contenedor:
+Detener el entorno:
 
 ```powershell
 docker compose down
 ```
 
-Validar health:
+Servicios disponibles:
+
+- API: `http://localhost:8080`
+- PostgreSQL: `localhost:5434`
+- Swagger UI: `http://localhost:8080/swagger-ui/index.html`
+- Prometheus: `http://localhost:9090`
+- Grafana: `http://localhost:3000`
+
+Validaciones utiles:
 
 ```powershell
 docker compose ps
@@ -136,21 +150,165 @@ Invoke-RestMethod http://localhost:8080/actuator/health
 Invoke-RestMethod http://localhost:8080/actuator/prometheus
 ```
 
-Tambien se puede abrir en el navegador:
+Si se necesita recrear la base local desde cero:
 
-```text
-http://localhost:8080/actuator/health
+```powershell
+docker compose down -v
+docker compose up --build
 ```
 
-Abrir Swagger UI:
+Para conectarse desde DBeaver u otro cliente local:
 
 ```text
-http://localhost:8080/swagger-ui/index.html
+Host: localhost
+Port: 5434
+Database: promotrack
+User: promotrack
+Password: promotrack
 ```
 
-## Monitoreo
+## CI/CD con GitHub Actions
 
-El proyecto usa Spring Boot Actuator, Micrometer, Prometheus y Grafana con una exposicion minima y explicita para monitoreo basico local:
+El proyecto usa GitHub Actions para separar validacion, publicacion de imagen y deploy academico por release tag.
+
+Workflow de CI: `.github/workflows/ci.yml`
+
+- Se ejecuta en Pull Requests hacia `develop` y `main`.
+- Tambien puede ejecutarse manualmente con `workflow_dispatch`.
+- Valida tests con Maven Wrapper.
+- Los tests usan PostgreSQL mediante Testcontainers; no se configura un servicio PostgreSQL separado en GitHub Actions.
+- Genera el package de la aplicacion.
+- Valida la configuracion de Docker Compose.
+- Construye la imagen Docker localmente sin publicarla.
+
+Workflow de publicacion: `.github/workflows/docker-publish.yml`
+
+- Se ejecuta en push a `develop`.
+- Se ejecuta en push a `main`.
+- Tambien puede ejecutarse manualmente con `workflow_dispatch`.
+- Ejecuta tests con PostgreSQL mediante Testcontainers.
+- Genera el package de la aplicacion con tests omitidos, porque ya fueron validados en el paso anterior.
+- Construye la imagen Docker.
+- Publica la imagen en GitHub Container Registry.
+
+Workflow de release y deploy demo: `.github/workflows/release.yml`
+
+- Se ejecuta al pushear tags semver con formato `vX.Y.Z`.
+- Ejecuta tests con PostgreSQL mediante Testcontainers.
+- Genera el package de la aplicacion con tests omitidos, porque ya fueron validados en el paso anterior.
+- Construye y publica la imagen Docker en GitHub Container Registry.
+- Crea una GitHub Release con `GITHUB_TOKEN`.
+- Dispara el deploy en Render mediante el secret `RENDER_DEPLOY_HOOK_URL`.
+
+Flujo esperado:
+
+```text
+feature branch -> Pull Request a develop -> CI sin publicacion
+merge a develop -> imagen :develop y :develop-<sha>
+merge a main -> imagen :latest y :main-<sha>
+tag vX.Y.Z -> imagen :vX.Y.Z, :X.Y, :X, :sha-<sha> -> GitHub Release -> Render deploy hook
+```
+
+## Publicacion en GitHub Container Registry
+
+La imagen Docker se publica en GitHub Container Registry:
+
+```text
+ghcr.io/chochi1250/promotrack-api
+```
+
+Tags usados:
+
+- `develop`: imagen de integracion generada desde la rama `develop`.
+- `develop-<sha>`: imagen de integracion trazable a un commit.
+- `latest`: imagen estable generada desde la rama `main`.
+- `main-<sha>`: imagen estable trazable a un commit.
+- `vX.Y.Z`: imagen de release generada desde un tag semver.
+- `X.Y` y `X`: alias semver para la ultima release de una linea mayor o menor.
+- `sha-<sha>`: tag de release asociado al commit para trazabilidad.
+
+Crear una release tag:
+
+```powershell
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+Descargar la imagen estable:
+
+```powershell
+docker pull ghcr.io/chochi1250/promotrack-api:latest
+```
+
+Ejecutar la imagen publicada requiere una base PostgreSQL disponible. Para validar la imagen sin levantar la API desde Compose:
+
+```powershell
+docker compose up -d postgres
+
+docker run --rm -p 8080:8080 `
+  -e SPRING_DATASOURCE_URL=jdbc:postgresql://host.docker.internal:5434/promotrack `
+  -e SPRING_DATASOURCE_USERNAME=promotrack `
+  -e SPRING_DATASOURCE_PASSWORD=promotrack `
+  ghcr.io/chochi1250/promotrack-api:latest
+```
+
+Validar healthcheck:
+
+```powershell
+Invoke-RestMethod http://localhost:8080/actuator/health
+```
+
+Para validar una imagen de integracion:
+
+```powershell
+docker pull ghcr.io/chochi1250/promotrack-api:develop
+```
+
+## Deploy academico en Render
+
+Render se usa solo como bonus academico para publicar una demo accesible de la API. No reemplaza el entorno local con Docker Compose, no incluye Prometheus/Grafana administrados y no se presenta como una configuracion de produccion real.
+
+La aplicacion es compatible con el puerto dinamico de Render mediante:
+
+```yaml
+server.port: ${PORT:8080}
+```
+
+Configuracion sugerida en Render:
+
+- crear un Web Service desde el repositorio o desde la imagen Docker publicada en GHCR;
+- si se usa GHCR, apuntar el servicio a un tag de release estable como `ghcr.io/chochi1250/promotrack-api:1` o `ghcr.io/chochi1250/promotrack-api:1.0`;
+- usar el Dockerfile del proyecto;
+- configurar el healthcheck en `/actuator/health`;
+- usar una base PostgreSQL administrada de Render o una PostgreSQL externa;
+- crear un deploy hook y guardar su URL como secret `RENDER_DEPLOY_HOOK_URL` en GitHub;
+- no levantar Docker Compose en Render.
+
+Variables de entorno necesarias:
+
+```text
+SPRING_PROFILES_ACTIVE=render
+SPRING_DATASOURCE_URL=jdbc:postgresql://<host>:<port>/<database>
+SPRING_DATASOURCE_USERNAME=<usuario>
+SPRING_DATASOURCE_PASSWORD=<password>
+```
+
+Render define `PORT` automaticamente. Si se ejecuta fuera de Render y `PORT` no existe, la API mantiene `8080`.
+
+El perfil `render` es minimo: usa PostgreSQL por variables de entorno, no carga `data.sql`, no expone el endpoint interno de demo del perfil `dev` y usa `spring.jpa.hibernate.ddl-auto=update` para permitir una demo simple sin Flyway. Esta decision es aceptable para el alcance academico del TP, pero no reemplaza migraciones versionadas en un entorno productivo.
+
+El deploy hacia Render se dispara solo al publicar un tag semver `vX.Y.Z`. Los Pull Requests y los merges a `develop` o `main` no despliegan en Render.
+
+Limitaciones del plan gratuito:
+
+- puede haber cold start o spin down despues de inactividad;
+- la primera respuesta puede demorar mas;
+- los recursos son acotados;
+- la base PostgreSQL debe configurarse aparte y respetar las restricciones del plan elegido.
+
+## Healthcheck y Actuator
+
+Actuator expone una lista acotada de endpoints para monitoreo local:
 
 - `GET /actuator/health`
 - `GET /actuator/info`
@@ -159,78 +317,30 @@ El proyecto usa Spring Boot Actuator, Micrometer, Prometheus y Grafana con una e
 
 No se exponen endpoints sensibles como `env`, `beans`, `heapdump`, `threaddump`, `configprops`, `shutdown` o `loggers`.
 
-Prometheus scrapea la API desde `monitoring/prometheus.yml` usando el target interno de Docker `api:8080`. Grafana se usa como representacion visual de las metricas y queda conectado a Prometheus mediante provisioning local.
+## Monitoreo local
 
-Prometheus:
+El monitoreo local se basa en Actuator, Micrometer, Prometheus y Grafana.
 
-- UI: `http://localhost:9090`
-- Targets: `http://localhost:9090/targets`
-- El job `promotrack-api` debe aparecer como `UP`.
+- La API expone metricas en `/actuator/prometheus`.
+- Prometheus scrapea la API usando el target interno de Docker `api:8080`.
+- Grafana se conecta a Prometheus mediante provisioning local.
+- El dashboard versionado esta en `monitoring/grafana/promotrack-dashboard.json`.
 
-Grafana:
-
-- UI: `http://localhost:3000`
-- Datasource Prometheus provisionado automaticamente.
-- Dashboard provisionado desde `monitoring/grafana/promotrack-dashboard.json`.
-- Si hiciera falta importarlo manualmente: abrir Grafana, ir a Dashboards, New, Import y cargar `monitoring/grafana/promotrack-dashboard.json`.
-
-Generar trafico de demo:
+Para generar trafico de demo:
 
 ```powershell
 .\scripts\simulate-traffic.ps1
 ```
 
-Opcionalmente se puede ajustar la cantidad de rondas:
-
-```powershell
-.\scripts\simulate-traffic.ps1 -Rounds 20 -DelayMilliseconds 100
-```
-
-Para generar errores 5xx controlados en una demo local con perfil `dev`:
+Para incluir errores 5xx controlados en perfil `dev`:
 
 ```powershell
 .\scripts\simulate-traffic.ps1 -IncludeServerErrors
 ```
 
-Metricas utiles para observar:
-
-- requests HTTP,
-- errores 4xx/5xx,
-- latencia,
-- memoria JVM,
-- CPU/proceso.
-
-PromQL sugerido:
-
-```promql
-sum(rate(http_server_requests_seconds_count[1m])) * 60
-sum(rate(http_server_requests_seconds_count{status=~"5.."}[1m])) * 60
-sum(rate(http_server_requests_seconds_sum[1m])) / sum(rate(http_server_requests_seconds_count[1m]))
-```
-
 La documentacion completa del monitoreo local esta en `docs/monitoring.md`.
 
-## URLs Utiles
-
-- API: `http://localhost:8080`
-- Swagger UI: `http://localhost:8080/swagger-ui/index.html`
-- Actuator Health: `http://localhost:8080/actuator/health`
-- Actuator Info: `http://localhost:8080/actuator/info`
-- Actuator Metrics: `http://localhost:8080/actuator/metrics`
-- Actuator Prometheus: `http://localhost:8080/actuator/prometheus`
-- Prometheus UI: `http://localhost:9090`
-- Grafana UI: `http://localhost:3000`
-- H2 Console: `http://localhost:8080/h2-console`
-
-Credenciales H2 en perfil `dev`:
-
-```text
-JDBC URL: jdbc:h2:mem:promotrack
-User Name: sa
-Password:
-```
-
-## Endpoints Principales
+## Endpoints principales
 
 Supermercados:
 
@@ -250,26 +360,126 @@ Ofertas:
 - `GET /api/offers/today`
 - `GET /api/offers/upcoming`
 - `GET /api/offers/expiring-soon`
+- `GET /api/offers/expiring-soon?days=7`
 - `GET /api/offers/calendar?from=YYYY-MM-DD&to=YYYY-MM-DD`
 - `GET /api/offers/supermarket/{supermarketId}`
 
-## Perfil Dev con H2
+El parametro `days` de `/api/offers/expiring-soon` es opcional. Si no se informa, usa `3` dias por defecto. El rango permitido es `1..30`.
 
-El perfil activo por defecto es `dev`. En este TP se usa como baseline academico/local de demo, no como configuracion productiva. Usa una base H2 en memoria configurada en `src/main/resources/application-dev.yml`.
+Soporte:
 
-La configuracion actual:
+- `GET /`
+- `GET /actuator/health`
+- `GET /actuator/info`
+- `GET /actuator/metrics`
+- `GET /actuator/prometheus`
 
-- Usa H2 en memoria.
-- Habilita consola H2 en `/h2-console`.
-- Ejecuta `data.sql` al iniciar.
-- Usa modo compatible con PostgreSQL para facilitar una futura migracion.
-- Expone Actuator en `/actuator/health`, `/actuator/info`, `/actuator/metrics` y `/actuator/prometheus`.
+## Flujo de trabajo con Git
 
-## Evolucion Opcional
+El proyecto usa un flujo simple orientado a Pull Requests:
 
-El alcance actual cubre la API, tests, containerizacion, CI, publicacion en GHCR y monitoreo local. Como mejoras futuras, sin formar parte de la entrega principal del TP, se podria evaluar:
+- `feature/*`: ramas para cambios puntuales.
+- `develop`: rama de integracion.
+- `main`: rama estable/final.
 
-- Desplegar la API en Render u otra plataforma gratuita.
-- Agregar New Relic, APM o trazas si se busca observabilidad mas completa.
-- Separar con mas detalle perfiles `dev` y `prod`, incluyendo hardening de H2, Swagger y Actuator.
-- Versionar releases estables a partir de `main`.
+Flujo recomendado:
+
+```text
+feature/* -> Pull Request a develop -> merge a develop -> Pull Request a main -> merge a main
+main -> tag vX.Y.Z -> GitHub Release -> deploy demo en Render
+```
+
+Los Pull Requests permiten ejecutar CI antes de integrar cambios. La publicacion de imagen se realiza al integrar cambios en `develop` o `main`. El deploy academico en Render queda reservado para tags de release.
+
+## Decisiones tecnicas
+
+- PostgreSQL se usa como base estandar del proyecto.
+- Docker Compose provee PostgreSQL para el entorno local `dev`.
+- Testcontainers provee PostgreSQL efimero para tests automatizados, sin depender de una base instalada manualmente.
+- Dockerfile multi-stage separa build y runtime.
+- Docker Compose permite levantar API, PostgreSQL, Prometheus y Grafana con un solo comando.
+- GitHub Actions automatiza validacion y publicacion de imagen.
+- GHCR se usa como registry integrado con GitHub y trazable por tags.
+- Render se usa como despliegue de demo academica disparado por deploy hook desde un tag semver.
+- Prometheus y Grafana cubren monitoreo local sin depender de servicios externos.
+- Swagger/OpenAPI documenta los endpoints disponibles.
+
+Kubernetes, Terraform, New Relic, APM y OpenTelemetry no forman parte de la implementacion actual. Quedan como roadmap futuro para no sobredimensionar el TP.
+
+## Perfiles de base de datos
+
+El perfil activo por defecto es `dev`. Esta configuracion es un baseline academico/local, no una configuracion productiva.
+
+Perfil `dev`:
+
+- usa PostgreSQL;
+- en Docker Compose se conecta a `postgres:5432`;
+- fuera de Docker Compose se conecta por defecto a `localhost:5434`;
+- toma credenciales desde variables de entorno;
+- carga datos iniciales desde `data.sql`;
+- Actuator limitado a `health`, `info`, `metrics` y `prometheus`.
+
+Variables usadas por el perfil `dev`:
+
+```text
+SPRING_DATASOURCE_URL
+SPRING_DATASOURCE_USERNAME
+SPRING_DATASOURCE_PASSWORD
+```
+
+Perfil `render`:
+
+- usa PostgreSQL administrado o externo;
+- toma conexion y credenciales desde variables de entorno;
+- toma el puerto desde `PORT`, con fallback local a `8080`;
+- no depende de Docker Compose;
+- no carga datos iniciales desde `data.sql`;
+- mantiene Actuator limitado a `health`, `info`, `metrics` y `prometheus`.
+
+Variables usadas por el perfil `render`:
+
+```text
+SPRING_PROFILES_ACTIVE=render
+SPRING_DATASOURCE_URL
+SPRING_DATASOURCE_USERNAME
+SPRING_DATASOURCE_PASSWORD
+PORT
+```
+
+Perfil `test`:
+
+- usa PostgreSQL mediante Testcontainers;
+- no requiere PostgreSQL instalado localmente;
+- no depende de puertos fijos como `localhost:5432` o `localhost:5434`;
+- carga datos iniciales desde `data.sql`;
+- valida contra el mismo motor de base de datos que el entorno local.
+
+## Evidencias para defensa
+
+Checklist sugerida:
+
+- GitHub Actions de CI en verde.
+- Workflow de publicacion en GHCR en verde.
+- Workflow de release en verde para un tag semver `vX.Y.Z`.
+- Imagen publicada en `ghcr.io/chochi1250/promotrack-api`.
+- `docker pull` funcionando.
+- `docker run` funcionando desde la imagen publicada, conectado a PostgreSQL.
+- Deploy hook de Render configurado como secret `RENDER_DEPLOY_HOOK_URL`.
+- Demo academica en Render respondiendo `/actuator/health`.
+- `/actuator/health` respondiendo `UP`.
+- Swagger UI funcionando.
+- Prometheus con target `promotrack-api` en estado `UP`.
+- Grafana mostrando metricas luego de generar trafico.
+
+## Roadmap futuro
+
+Mejoras posibles fuera del alcance principal de esta entrega:
+
+- agregar Flyway para versionar migraciones de base de datos;
+- evaluar entornos separados de deploy para staging y produccion real;
+- agregar New Relic o una herramienta APM;
+- incorporar OpenTelemetry para trazas;
+- evaluar Kubernetes para orquestacion;
+- gestionar infraestructura con Terraform;
+- agregar paginacion, busqueda o mas filtros funcionales si el dominio crece;
+- separar con mas detalle perfiles `dev` y `prod`.

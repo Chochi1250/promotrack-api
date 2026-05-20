@@ -11,6 +11,9 @@ $validEndpoints = @(
     "$BaseUrl/api/offers/today",
     "$BaseUrl/api/offers/upcoming",
     "$BaseUrl/api/offers/expiring-soon",
+    "$BaseUrl/api/offers/expiring-soon?days=1",
+    "$BaseUrl/api/offers/expiring-soon?days=7",
+    "$BaseUrl/api/offers/expiring-soon?days=30",
     "$BaseUrl/api/supermarkets"
 )
 

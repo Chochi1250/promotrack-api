@@ -7,6 +7,7 @@ import com.promotrack.api.dto.response.ErrorResponse;
 import com.promotrack.api.dto.response.OfferResponse;
 import com.promotrack.api.mapper.OfferMapper;
 import com.promotrack.api.service.OfferService;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -14,8 +15,11 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -34,6 +38,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/offers")
 @Tag(name = "Offers", description = "Operations for managing supermarket offers and offer calendar views")
+@Validated
 public class OfferController {
 
     private final OfferService offerService;
@@ -142,10 +147,26 @@ public class OfferController {
     }
 
     @GetMapping("/expiring-soon")
-    @Operation(summary = "List offers expiring soon", description = "Returns active offers ending in the next three days.")
-    @ApiResponse(responseCode = "200", description = "Expiring offers returned")
-    public ResponseEntity<List<OfferResponse>> findExpiringSoonOffers() {
-        return ResponseEntity.ok(toResponseList(offerService.findExpiringSoonOffers()));
+    @Operation(
+            summary = "List offers expiring soon",
+            description = "Returns active offers ending between today and the next requested number of days. Defaults to 3 days."
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Expiring offers returned"),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "Invalid days parameter",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))
+            )
+    })
+    public ResponseEntity<List<OfferResponse>> findExpiringSoonOffers(
+            @Parameter(description = "Number of days from today to include. Allowed range: 1 to 30.")
+            @RequestParam(defaultValue = "3")
+            @Min(value = 1, message = "days must be at least 1")
+            @Max(value = 30, message = "days must be at most 30")
+            int days
+    ) {
+        return ResponseEntity.ok(toResponseList(offerService.findExpiringSoonOffers(days)));
     }
 
     @GetMapping("/calendar")
