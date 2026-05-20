@@ -84,11 +84,15 @@ jobs:
           TAG_NAME: ${{ github.ref_name }}
           IMAGE_TAGS: ${{ steps.meta.outputs.tags }}
         run: |
+          {
+            echo "Docker images published to GHCR:"
+            echo ""
+            echo "$IMAGE_TAGS"
+          } > release-notes.md
+
           gh release create "$TAG_NAME" \
             --title "PromoTrack API $TAG_NAME" \
-            --notes "Docker images published to GHCR:
-
-$IMAGE_TAGS"
+            --notes-file release-notes.md
 
       - name: Trigger Render deploy hook
         env:
