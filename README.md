@@ -12,6 +12,7 @@ El proyecto funciona como aplicacion base para aplicar practicas DevOps sobre un
 - publicar una imagen Docker en GitHub Container Registry;
 - exponer healthchecks y metricas con Spring Actuator;
 - recolectar y visualizar metricas con Prometheus y Grafana;
+- monitorear la demo desplegada con New Relic APM;
 - desplegar una demo academica minima en Render;
 - documentar el flujo de entrega y las decisiones tecnicas.
 
@@ -52,6 +53,7 @@ Observabilidad:
 - Micrometer Prometheus Registry
 - Prometheus
 - Grafana
+- New Relic APM para la demo en Render
 
 ## Funcionalidades principales
 
@@ -405,6 +407,25 @@ Para incluir errores 5xx controlados en perfil `dev`:
 
 La documentacion completa del monitoreo local esta en `docs/monitoring.md`.
 
+## APM en Render
+
+La imagen Docker incluye el New Relic Java Agent en `/opt/newrelic/newrelic.jar`, pero no lo activa por defecto. En Render se habilita con variables de entorno, sin commitear secretos:
+
+```text
+NEW_RELIC_LICENSE_KEY=<secret>
+NEW_RELIC_APP_NAME=PromoTrack API Render
+NEW_RELIC_LOG_FILE_NAME=STDOUT
+JAVA_TOOL_OPTIONS=-javaagent:/opt/newrelic/newrelic.jar
+```
+
+Para generar trafico seguro contra la app desplegada:
+
+```powershell
+.\scripts\simulate-traffic.ps1 -BaseUrl https://<tu-servicio>.onrender.com -RenderSafe -Rounds 20
+```
+
+La guia completa de monitoreo local y APM remoto esta en `docs/monitoring.md`.
+
 ## Endpoints principales
 
 Supermercados:
@@ -468,9 +489,10 @@ Los Pull Requests permiten ejecutar CI antes de integrar cambios. La publicacion
 - GHCR se usa como registry integrado con GitHub y trazable por tags.
 - Render se usa como despliegue de demo academica disparado por deploy hook desde un tag semver o desde un workflow manual, siempre con `imgURL` para elegir una imagen concreta.
 - Prometheus y Grafana cubren monitoreo local sin depender de servicios externos.
+- New Relic APM cubre la demo publica en Render y se activa solo con variables de entorno del servicio.
 - Swagger/OpenAPI documenta los endpoints disponibles.
 
-Kubernetes, Terraform, New Relic, APM y OpenTelemetry no forman parte de la implementacion actual. Quedan como roadmap futuro para no sobredimensionar el TP.
+Kubernetes, Terraform, OpenTelemetry y alerting formal quedan como roadmap futuro para no sobredimensionar el TP.
 
 ## Perfiles de base de datos
 
@@ -542,6 +564,7 @@ Checklist sugerida:
 - Swagger UI funcionando.
 - Prometheus con target `promotrack-api` en estado `UP`.
 - Grafana mostrando metricas luego de generar trafico.
+- New Relic APM mostrando transacciones, latencia, errores y trazas de servicios sobre la app en Render.
 
 ## Roadmap futuro
 
@@ -549,7 +572,7 @@ Mejoras posibles fuera del alcance principal de esta entrega:
 
 - agregar Flyway para versionar migraciones de base de datos;
 - evaluar entornos separados de deploy para staging y produccion real;
-- agregar New Relic o una herramienta APM;
+- agregar alertas y SLOs sobre las metricas disponibles;
 - incorporar OpenTelemetry para trazas;
 - evaluar Kubernetes para orquestacion;
 - gestionar infraestructura con Terraform;

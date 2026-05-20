@@ -1,5 +1,7 @@
 package com.promotrack.api.service;
 
+import com.newrelic.api.agent.NewRelic;
+import com.newrelic.api.agent.Trace;
 import com.promotrack.api.domain.model.Supermarket;
 import com.promotrack.api.exception.ResourceNotFoundException;
 import com.promotrack.api.repository.SupermarketRepository;
@@ -19,8 +21,12 @@ public class SupermarketService {
     }
 
     @Transactional(readOnly = true)
+    @Trace
     public List<Supermarket> findAllActive() {
-        return supermarketRepository.findByActiveTrue();
+        List<Supermarket> supermarkets = supermarketRepository.findByActiveTrue();
+        NewRelic.addCustomParameter("business.operation", "supermarkets.list");
+        NewRelic.addCustomParameter("result.count", supermarkets.size());
+        return supermarkets;
     }
 
     @Transactional(readOnly = true)
