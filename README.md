@@ -169,7 +169,7 @@ Password: promotrack
 
 ## CI/CD con GitHub Actions
 
-El proyecto usa GitHub Actions para separar validacion, publicacion de imagen y deploy academico por release tag.
+El proyecto usa GitHub Actions para separar validacion, publicacion de imagen, deploy manual y deploy academico por release tag.
 
 Workflow de CI: `.github/workflows/ci.yml`
 
@@ -198,7 +198,19 @@ Workflow de release y deploy demo: `.github/workflows/release.yml`
 - Genera el package de la aplicacion con tests omitidos, porque ya fueron validados en el paso anterior.
 - Construye y publica la imagen Docker en GitHub Container Registry.
 - Crea una GitHub Release con `GITHUB_TOKEN`.
-- Dispara el deploy en Render mediante el secret `RENDER_DEPLOY_HOOK_URL`.
+- Dispara el deploy en Render mediante el secret `RENDER_DEPLOY_HOOK_URL` y el parametro `imgURL`.
+- El `imgURL` apunta a la imagen formal del tag: `ghcr.io/chochi1250/promotrack-api:${GITHUB_REF_NAME}`.
+
+Workflow de deploy manual en Render: `.github/workflows/render-deploy.yml`
+
+- Se ejecuta manualmente con `workflow_dispatch` desde GitHub Actions.
+- Ejecuta tests con PostgreSQL mediante Testcontainers.
+- Genera el package de la aplicacion con tests omitidos, porque ya fueron validados en el paso anterior.
+- Construye y publica la imagen Docker en GitHub Container Registry.
+- Publica una imagen especifica con tag `render-manual-<short-sha>`.
+- Dispara el deploy en Render mediante el secret `RENDER_DEPLOY_HOOK_URL` y el parametro `imgURL`.
+- El `imgURL` apunta exactamente a la imagen manual recien publicada.
+- No crea tags Git, no crea GitHub Releases y no reemplaza el flujo de release semver.
 
 Flujo esperado:
 
@@ -206,7 +218,8 @@ Flujo esperado:
 feature branch -> Pull Request a develop -> CI sin publicacion
 merge a develop -> imagen :develop y :develop-<sha>
 merge a main -> imagen :latest y :main-<sha>
-tag vX.Y.Z -> imagen :vX.Y.Z, :X.Y, :X, :sha-<sha> -> GitHub Release -> Render deploy hook
+tag vX.Y.Z -> imagen :vX.Y.Z, :X.Y, :X, :sha-<sha> -> GitHub Release -> Render deploy hook con imgURL=:vX.Y.Z
+Run workflow Manual Deploy - Render -> imagen :render-manual-<short-sha> -> Render deploy hook con imgURL=:render-manual-<short-sha>
 ```
 
 ## Publicacion en GitHub Container Registry
@@ -226,6 +239,7 @@ Tags usados:
 - `vX.Y.Z`: imagen de release generada desde un tag semver.
 - `X.Y` y `X`: alias semver para la ultima release de una linea mayor o menor.
 - `sha-<sha>`: tag de release asociado al commit para trazabilidad.
+- `render-manual-<short-sha>`: imagen manual trazable a un commit y usada para deploy a demanda.
 
 Crear una release tag:
 
@@ -277,12 +291,20 @@ server.port: ${PORT:8080}
 Configuracion sugerida en Render:
 
 - crear un Web Service desde el repositorio o desde la imagen Docker publicada en GHCR;
-- si se usa GHCR, apuntar el servicio a un tag de release estable como `ghcr.io/chochi1250/promotrack-api:1` o `ghcr.io/chochi1250/promotrack-api:1.0`;
 - usar el Dockerfile del proyecto;
 - configurar el healthcheck en `/actuator/health`;
 - usar una base PostgreSQL administrada de Render o una PostgreSQL externa;
 - crear un deploy hook y guardar su URL como secret `RENDER_DEPLOY_HOOK_URL` en GitHub;
 - no levantar Docker Compose en Render.
+
+Los workflows no dependen de un tag fijo configurado manualmente en Render. Ambos llaman el Deploy Hook con el parametro `imgURL`, codificado para URL:
+
+- release formal: `imgURL=ghcr.io/chochi1250/promotrack-api:vX.Y.Z`;
+- deploy manual: `imgURL=ghcr.io/chochi1250/promotrack-api:render-manual-<short-sha>`.
+
+En la llamada real, `imgURL` se envia como query parameter URL-encoded. Por ejemplo, `ghcr.io/chochi1250/promotrack-api:v1.0.3` se envia codificado dentro del Deploy Hook para evitar problemas con `/` y `:`.
+
+El workflow `Manual Deploy - Render` sirve para redeploys o demos a voluntad, sin crear tags semver ni GitHub Releases.
 
 Variables de entorno necesarias:
 
@@ -297,7 +319,7 @@ Render define `PORT` automaticamente. Si se ejecuta fuera de Render y `PORT` no 
 
 El perfil `render` es minimo: usa PostgreSQL por variables de entorno, no carga `data.sql`, no expone el endpoint interno de demo del perfil `dev` y usa `spring.jpa.hibernate.ddl-auto=update` para permitir una demo simple sin Flyway. Esta decision es aceptable para el alcance academico del TP, pero no reemplaza migraciones versionadas en un entorno productivo.
 
-El deploy hacia Render se dispara solo al publicar un tag semver `vX.Y.Z`. Los Pull Requests y los merges a `develop` o `main` no despliegan en Render.
+El deploy hacia Render puede dispararse al publicar un tag semver `vX.Y.Z` o al ejecutar manualmente el workflow `Manual Deploy - Render`. En ambos casos GitHub Actions publica la imagen en GHCR y Render despliega la imagen concreta recibida por `imgURL`. Los Pull Requests y los merges a `develop` o `main` no despliegan en Render por si solos.
 
 Limitaciones del plan gratuito:
 
@@ -387,9 +409,10 @@ Flujo recomendado:
 ```text
 feature/* -> Pull Request a develop -> merge a develop -> Pull Request a main -> merge a main
 main -> tag vX.Y.Z -> GitHub Release -> deploy demo en Render
+Run workflow Manual Deploy - Render -> deploy demo en Render sin release
 ```
 
-Los Pull Requests permiten ejecutar CI antes de integrar cambios. La publicacion de imagen se realiza al integrar cambios en `develop` o `main`. El deploy academico en Render queda reservado para tags de release.
+Los Pull Requests permiten ejecutar CI antes de integrar cambios. La publicacion de imagen se realiza al integrar cambios en `develop` o `main`. El deploy academico en Render puede hacerse por tags de release o con el workflow manual, pero no se dispara automaticamente por Pull Requests ni por merges.
 
 ## Decisiones tecnicas
 
@@ -400,7 +423,7 @@ Los Pull Requests permiten ejecutar CI antes de integrar cambios. La publicacion
 - Docker Compose permite levantar API, PostgreSQL, Prometheus y Grafana con un solo comando.
 - GitHub Actions automatiza validacion y publicacion de imagen.
 - GHCR se usa como registry integrado con GitHub y trazable por tags.
-- Render se usa como despliegue de demo academica disparado por deploy hook desde un tag semver.
+- Render se usa como despliegue de demo academica disparado por deploy hook desde un tag semver o desde un workflow manual, siempre con `imgURL` para elegir una imagen concreta.
 - Prometheus y Grafana cubren monitoreo local sin depender de servicios externos.
 - Swagger/OpenAPI documenta los endpoints disponibles.
 
@@ -408,11 +431,12 @@ Kubernetes, Terraform, New Relic, APM y OpenTelemetry no forman parte de la impl
 
 ## Perfiles de base de datos
 
-El perfil activo por defecto es `dev`. Esta configuracion es un baseline academico/local, no una configuracion productiva.
+El perfil activo por defecto es `dev` por `src/main/resources/application.yml`. Esta configuracion es un baseline academico/local, no una configuracion productiva.
 
 Perfil `dev`:
 
 - usa PostgreSQL;
+- queda activo en Docker Compose mediante `SPRING_PROFILES_ACTIVE=dev`;
 - en Docker Compose se conecta a `postgres:5432`;
 - fuera de Docker Compose se conecta por defecto a `localhost:5434`;
 - toma credenciales desde variables de entorno;
@@ -422,6 +446,7 @@ Perfil `dev`:
 Variables usadas por el perfil `dev`:
 
 ```text
+SPRING_PROFILES_ACTIVE=dev
 SPRING_DATASOURCE_URL
 SPRING_DATASOURCE_USERNAME
 SPRING_DATASOURCE_PASSWORD
@@ -430,10 +455,12 @@ SPRING_DATASOURCE_PASSWORD
 Perfil `render`:
 
 - usa PostgreSQL administrado o externo;
+- queda activo en Render mediante `SPRING_PROFILES_ACTIVE=render`;
 - toma conexion y credenciales desde variables de entorno;
 - toma el puerto desde `PORT`, con fallback local a `8080`;
 - no depende de Docker Compose;
 - no carga datos iniciales desde `data.sql`;
+- usa `spring.sql.init.mode=never`;
 - mantiene Actuator limitado a `health`, `info`, `metrics` y `prometheus`.
 
 Variables usadas por el perfil `render`:
@@ -449,6 +476,7 @@ PORT
 Perfil `test`:
 
 - usa PostgreSQL mediante Testcontainers;
+- queda activo por `src/test/resources/application.yml` y por `@ActiveProfiles("test")` en tests de contexto;
 - no requiere PostgreSQL instalado localmente;
 - no depende de puertos fijos como `localhost:5432` o `localhost:5434`;
 - carga datos iniciales desde `data.sql`;
@@ -461,6 +489,7 @@ Checklist sugerida:
 - GitHub Actions de CI en verde.
 - Workflow de publicacion en GHCR en verde.
 - Workflow de release en verde para un tag semver `vX.Y.Z`.
+- Workflow manual `Manual Deploy - Render` en verde.
 - Imagen publicada en `ghcr.io/chochi1250/promotrack-api`.
 - `docker pull` funcionando.
 - `docker run` funcionando desde la imagen publicada, conectado a PostgreSQL.
