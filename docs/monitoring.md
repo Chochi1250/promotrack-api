@@ -176,12 +176,6 @@ Rollback completo:
 2. Revertir la dependencia `newrelic-api` y las anotaciones `@Trace` si se desea remover toda la instrumentacion custom.
 3. Publicar y desplegar una nueva imagen.
 
-Troubleshooting:
-
-- `JAVA_TOOL_OPTIONS` debe tener exactamente el path del agent dentro de la imagen: `-javaagent:/opt/newrelic/newrelic.jar`.
-- Si Render muestra `Error opening zip file or JAR manifest missing`, la JVM recibio el parametro pero no pudo abrir el agent. Revisar que la imagen desplegada haya sido reconstruida y que el Docker build ejecute correctamente la validacion `java -jar /opt/newrelic/newrelic.jar -v`.
-- Para evitar usar capas cacheadas durante una prueba de correccion del agent, construir localmente con `docker build --no-cache -t promotrack-api:newrelic-debug .`.
-
 ## Trafico de demo
 
 El script `scripts/simulate-traffic.ps1` genera requests de lectura contra endpoints validos y errores 4xx controlados. Sirve para que Prometheus, Grafana y New Relic muestren trafico durante una demo.

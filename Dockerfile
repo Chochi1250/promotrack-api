@@ -15,6 +15,7 @@ FROM eclipse-temurin:25-jre AS newrelic-agent
 
 ARG NEW_RELIC_AGENT_VERSION=9.2.0
 
+<<<<<<< HEAD
 WORKDIR /tmp/newrelic-download
 
 RUN set -eux; \
@@ -33,6 +34,17 @@ RUN set -eux; \
     java -jar /opt/newrelic/newrelic.jar -v; \
     cd /; \
     rm -rf /tmp/newrelic-download
+=======
+WORKDIR /opt/newrelic
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends wget unzip \
+    && wget --quiet --output-document=/tmp/newrelic-java.zip "https://download.newrelic.com/newrelic/java-agent/newrelic-agent/${NEW_RELIC_AGENT_VERSION}/newrelic-java-${NEW_RELIC_AGENT_VERSION}.zip" \
+    && unzip -q /tmp/newrelic-java.zip -d /tmp \
+    && cp /tmp/newrelic/newrelic.jar /tmp/newrelic/newrelic.yml /opt/newrelic/ \
+    && mkdir -p /opt/newrelic/logs \
+    && rm -rf /tmp/newrelic /tmp/newrelic-java.zip /var/lib/apt/lists/*
+>>>>>>> origin/develop
 
 FROM eclipse-temurin:25-jre
 
