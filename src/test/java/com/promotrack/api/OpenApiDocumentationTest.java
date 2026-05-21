@@ -25,7 +25,7 @@ class OpenApiDocumentationTest {
         mockMvc.perform(get("/v3/api-docs"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.info.title").value("PromoTrack API"))
-                .andExpect(jsonPath("$.info.version").value("0.0.1-SNAPSHOT"))
+                .andExpect(jsonPath("$.info.version").value("1.1.0"))
                 .andExpect(jsonPath("$.paths", hasKey("/api/supermarkets")))
                 .andExpect(jsonPath("$.paths", hasKey("/api/supermarkets/{id}")))
                 .andExpect(jsonPath("$.paths", hasKey("/api/offers")))

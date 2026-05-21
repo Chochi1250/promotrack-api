@@ -1,5 +1,7 @@
 package com.promotrack.api.service;
 
+import com.newrelic.api.agent.NewRelic;
+import com.newrelic.api.agent.Trace;
 import com.promotrack.api.domain.model.Offer;
 import com.promotrack.api.domain.model.Supermarket;
 import com.promotrack.api.exception.InvalidDateRangeException;
@@ -102,14 +104,20 @@ public class OfferService {
     }
 
     @Transactional(readOnly = true)
+    @Trace
     public List<Offer> findTodayActiveOffers() {
         LocalDate today = today();
-        return offerRepository.findByActiveTrueAndStartDateLessThanEqualAndEndDateGreaterThanEqual(today, today);
+        List<Offer> offers = offerRepository.findByActiveTrueAndStartDateLessThanEqualAndEndDateGreaterThanEqual(today, today);
+        recordOfferQuery("offers.today", offers.size());
+        return offers;
     }
 
     @Transactional(readOnly = true)
+    @Trace
     public List<Offer> findUpcomingOffers() {
-        return offerRepository.findByActiveTrueAndStartDateAfter(today());
+        List<Offer> offers = offerRepository.findByActiveTrueAndStartDateAfter(today());
+        recordOfferQuery("offers.upcoming", offers.size());
+        return offers;
     }
 
     @Transactional(readOnly = true)
@@ -118,13 +126,16 @@ public class OfferService {
     }
 
     @Transactional(readOnly = true)
+    @Trace
     public List<Offer> findExpiringSoonOffers(int days) {
         LocalDate today = today();
-        return offerRepository.findByActiveTrueAndStartDateLessThanEqualAndEndDateBetween(
+        List<Offer> offers = offerRepository.findByActiveTrueAndStartDateLessThanEqualAndEndDateBetween(
                 today,
                 today,
                 today.plusDays(days)
         );
+        recordOfferQuery("offers.expiring-soon", days, offers.size());
+        return offers;
     }
 
     @Transactional(readOnly = true)
@@ -160,6 +171,18 @@ public class OfferService {
         if (startDate != null && endDate != null && endDate.isBefore(startDate)) {
             throw new InvalidDateRangeException("endDate cannot be before startDate");
         }
+    }
+
+    private void recordOfferQuery(String operation, int resultCount) {
+        recordOfferQuery(operation, null, resultCount);
+    }
+
+    private void recordOfferQuery(String operation, Integer days, int resultCount) {
+        NewRelic.addCustomParameter("business.operation", operation);
+        if (days != null) {
+            NewRelic.addCustomParameter("filter.days", days);
+        }
+        NewRelic.addCustomParameter("result.count", resultCount);
     }
 
     private LocalDate today() {

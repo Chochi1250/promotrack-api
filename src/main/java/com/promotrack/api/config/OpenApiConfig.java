@@ -14,6 +14,6 @@ public class OpenApiConfig {
                 .info(new Info()
                         .title("PromoTrack API")
                         .description("API REST para gestionar ofertas de supermercados argentinos")
-                        .version("0.0.1-SNAPSHOT"));
+                        .version("1.1.0"));
     }
 }
