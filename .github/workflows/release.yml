@@ -108,3 +108,34 @@ jobs:
 
           echo "Triggering Render deploy for image: $RENDER_IMAGE_URL"
           curl --fail --silent --show-error --request POST "${RENDER_DEPLOY_HOOK_URL}${SEPARATOR}imgURL=${ENCODED_IMAGE_URL}"
+
+      - name: Check New Relic Change Tracking config
+        id: newrelic_config
+        env:
+          NEW_RELIC_API_KEY: ${{ secrets.NEW_RELIC_API_KEY }}
+          NEW_RELIC_DEPLOYMENT_ENTITY_GUID: ${{ secrets.NEW_RELIC_DEPLOYMENT_ENTITY_GUID }}
+        run: |
+          if [ -n "$NEW_RELIC_API_KEY" ] && [ -n "$NEW_RELIC_DEPLOYMENT_ENTITY_GUID" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "New Relic Change Tracking skipped: missing NEW_RELIC_API_KEY or NEW_RELIC_DEPLOYMENT_ENTITY_GUID."
+          fi
+
+      - name: Record New Relic deploy triggered change event
+        if: ${{ steps.newrelic_config.outputs.enabled == 'true' }}
+        uses: newrelic/deployment-marker-action@v2.6.2
+        with:
+          apiKey: ${{ secrets.NEW_RELIC_API_KEY }}
+          commandType: changeTrackingCreateEvent
+          entitySearch: "id='${{ secrets.NEW_RELIC_DEPLOYMENT_ENTITY_GUID }}'"
+          version: ${{ github.ref_name }}
+          category: Deployment
+          type: Basic
+          commit: ${{ github.sha }}
+          deeplink: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          description: "PromoTrack API ${{ github.ref_name }} deploy sent to Render by GitHub Actions."
+          shortDescription: "PromoTrack API ${{ github.ref_name }} deploy triggered on Render"
+          user: ${{ github.actor }}
+          groupId: promotrack-api-${{ github.ref_name }}
+          customAttributes: '{environment: "render", registry: "ghcr", image: "ghcr.io/chochi1250/promotrack-api:${{ github.ref_name }}"}'

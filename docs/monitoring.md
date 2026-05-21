@@ -100,6 +100,12 @@ Atributos custom enviados:
 
 No se registran payloads completos, credenciales, cadenas de conexion ni datos personales.
 
+## New Relic Change Tracking en releases
+
+El workflow `.github/workflows/release.yml` registra un `ChangeTrackingEvent` en New Relic despues de enviar el deploy hook a Render para una release `vX.Y.Z`. El evento usa wording de deploy enviado/disparado a Render, no de deploy completado, y asocia version, commit, actor, workflow run e imagen GHCR.
+
+La integracion usa `newrelic/deployment-marker-action` con `changeTrackingCreateEvent`. Si faltan los secrets `NEW_RELIC_API_KEY` o `NEW_RELIC_DEPLOYMENT_ENTITY_GUID`, el paso se omite; si existen y New Relic rechaza el evento, el workflow falla para que la integracion sea verificable.
+
 ## Script de trafico
 
 El script `scripts/simulate-traffic.ps1` genera requests contra endpoints de lectura y errores 4xx controlados. Sirve para cargar metricas en Prometheus/Grafana y transacciones en New Relic.
