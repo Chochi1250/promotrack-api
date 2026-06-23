@@ -74,14 +74,9 @@ for ($round = 1; $round -le $Rounds; $round++) {
     1..$RequestsPerRound | ForEach-Object {
         $random = Get-Random -Minimum 1 -Maximum 101
 
-        # Distribucion aproximada:
-        # - 70% trafico valido
-        # - 25% errores 4xx controlados
-        # - 5% errores 5xx, solo en perfil dev y fuera de RenderSafe
-        #
-        # Ademas, si IncludeServerErrors esta activo, se fuerza al menos
-        # un 500 en la ultima request de la ultima ronda. Esto facilita
-        # la demo incluso con -Rounds 1.
+        # Mezcla aproximada: 70% de tráfico válido, 25% de errores 4xx y
+        # 5% de errores 5xx cuando se habilitan fuera del modo RenderSafe.
+        # La última solicitud garantiza un 5xx en ejecuciones cortas.
         $isLastRequest = ($round -eq $Rounds -and $_ -eq $RequestsPerRound)
 
         if ($includeServerErrorsForRun -and ($isLastRequest -or $random -gt 95)) {

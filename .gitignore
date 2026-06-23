@@ -25,6 +25,12 @@ logs/
 *.tmp
 *.temp
 *.bak
+uploads/
+
+# Database exports
+*.dump
+*.backup
+*.sql.gz
 
 # Environment and secrets
 .env
@@ -68,4 +74,5 @@ desktop.ini
 # Generated Initializr notes
 HELP.md
 
+# Local project notes
 Context.md

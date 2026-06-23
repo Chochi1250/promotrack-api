@@ -1,53 +1,36 @@
 # PromoTrack API
 
-PromoTrack API es una API REST academica desarrollada con Java y Spring Boot para gestionar supermercados y ofertas. El proyecto funciona como base para un Trabajo Practico integrador de DevOps: backend, base de datos, tests automatizados, contenedores, CI/CD, publicacion de imagen, deploy y observabilidad.
+API REST para administrar supermercados y promociones en Argentina. El proyecto es un prototipo académico orientado a prácticas de backend y DevOps: persistencia con PostgreSQL, documentación OpenAPI, pruebas automatizadas, contenedores, CI/CD y observabilidad.
 
-## Stack
+## Funcionalidades
 
-Backend:
+- ABM de supermercados y ofertas con baja lógica.
+- Consultas de ofertas vigentes, futuras y próximas a vencer.
+- Búsqueda por rango de fechas y por supermercado.
+- Validación de solicitudes y respuestas de error uniformes.
+- Documentación interactiva mediante Swagger UI.
 
-- Java 25
-- Spring Boot 4.0.6
-- Spring Web / MVC
-- Spring Data JPA
-- Bean Validation
-- Springdoc OpenAPI / Swagger UI
+## Tecnologías
 
-Base de datos:
+- Java 25 y Spring Boot 4
+- Spring Web, Spring Data JPA y Bean Validation
+- PostgreSQL 16
+- Springdoc OpenAPI
+- JUnit, MockMvc y Testcontainers
+- Docker y Docker Compose
+- Prometheus, Grafana y New Relic
+- GitHub Actions y GitHub Container Registry
 
-- PostgreSQL en Docker Compose para el perfil `dev`
-- PostgreSQL en Render para la demo desplegada
-- PostgreSQL mediante Testcontainers para tests automatizados
+## Requisitos
 
-DevOps:
+- Docker Desktop o un motor Docker compatible con Compose
+- Java 25 para ejecutar Maven fuera de Docker
 
-- Maven Wrapper
-- Dockerfile multi-stage
-- Docker Compose
-- GitHub Actions
-- GitHub Container Registry
-- Render mediante deploy hook
+El repositorio incluye Maven Wrapper, por lo que no es necesario instalar Maven.
 
-Observabilidad:
+## Ejecución local
 
-- Spring Boot Actuator
-- Micrometer Prometheus Registry
-- Prometheus y Grafana para monitoreo local
-- New Relic APM para la app desplegada en Render
-
-## Funcionalidades principales
-
-- Alta, consulta, actualizacion y baja logica de supermercados.
-- Alta, consulta, actualizacion y baja logica de ofertas.
-- Consulta de ofertas activas, del dia, futuras y proximas a vencer.
-- Consulta de ofertas por rango de fechas y por supermercado.
-- Validacion de requests con Bean Validation.
-- Respuestas de error centralizadas.
-- Documentacion OpenAPI disponible con Swagger UI.
-
-## Ejecucion local con Docker Compose
-
-Docker Compose levanta la API, PostgreSQL, Prometheus y Grafana:
+El entorno completo incluye la API, PostgreSQL, Prometheus y Grafana:
 
 ```powershell
 docker compose up --build
@@ -55,18 +38,19 @@ docker compose up --build
 
 Servicios disponibles:
 
-- API: `http://localhost:8080`
-- PostgreSQL: `localhost:5434`
-- Swagger UI: `http://localhost:8080/swagger-ui/index.html`
-- Prometheus: `http://localhost:9090`
-- Grafana: `http://localhost:3000`
+| Servicio | URL |
+| --- | --- |
+| API | `http://localhost:8080` |
+| Swagger UI | `http://localhost:8080/swagger-ui/index.html` |
+| PostgreSQL | `localhost:5434` |
+| Prometheus | `http://localhost:9090` |
+| Grafana | `http://localhost:3000` |
 
-Validaciones rapidas:
+Comprobación rápida:
 
 ```powershell
 docker compose ps
 Invoke-RestMethod http://localhost:8080/actuator/health
-Invoke-RestMethod http://localhost:8080/actuator/prometheus
 ```
 
 Para detener el entorno:
@@ -75,177 +59,95 @@ Para detener el entorno:
 docker compose down
 ```
 
-Para recrear la base local desde cero:
+El perfil `dev` recrea el esquema y carga los datos de ejemplo de `src/main/resources/data.sql`. Para reiniciar también el volumen local de PostgreSQL:
 
 ```powershell
 docker compose down -v
 docker compose up --build
 ```
 
-## Endpoints utiles
+## API
 
-Supermercados:
+La especificación completa está disponible en Swagger UI. Endpoints principales:
 
-- `GET /api/supermarkets`
-- `GET /api/supermarkets/{id}`
-- `POST /api/supermarkets`
-- `PUT /api/supermarkets/{id}`
-- `DELETE /api/supermarkets/{id}`
+| Recurso | Operaciones |
+| --- | --- |
+| Supermercados | `GET`, `POST /api/supermarkets`; `GET`, `PUT`, `DELETE /api/supermarkets/{id}` |
+| Ofertas | `GET`, `POST /api/offers`; `GET`, `PUT`, `DELETE /api/offers/{id}` |
+| Ofertas vigentes | `GET /api/offers/today` |
+| Ofertas futuras | `GET /api/offers/upcoming` |
+| Próximos vencimientos | `GET /api/offers/expiring-soon?days=3` |
+| Calendario | `GET /api/offers/calendar?from=YYYY-MM-DD&to=YYYY-MM-DD` |
+| Ofertas por supermercado | `GET /api/offers/supermarket/{supermarketId}` |
 
-Ofertas:
+El parámetro `days` es opcional, usa `3` por defecto y admite valores entre `1` y `30`.
 
-- `GET /api/offers`
-- `GET /api/offers/{id}`
-- `POST /api/offers`
-- `PUT /api/offers/{id}`
-- `DELETE /api/offers/{id}`
-- `GET /api/offers/today`
-- `GET /api/offers/upcoming`
-- `GET /api/offers/expiring-soon`
-- `GET /api/offers/expiring-soon?days=7`
-- `GET /api/offers/calendar?from=YYYY-MM-DD&to=YYYY-MM-DD`
-- `GET /api/offers/supermarket/{supermarketId}`
-
-Soporte:
-
-- `GET /`
-- `GET /actuator/health`
-- `GET /actuator/info`
-- `GET /actuator/metrics`
-- `GET /actuator/prometheus`
-- Swagger UI: `/swagger-ui/index.html`
-
-El parametro `days` de `/api/offers/expiring-soon` es opcional. Si no se informa, usa `3`; el rango permitido es `1..30`.
-
-## Tests
+## Pruebas
 
 ```powershell
 .\mvnw.cmd clean test
 ```
 
-Los tests usan PostgreSQL mediante Testcontainers. Para ejecutarlos localmente, Docker Desktop debe estar iniciado; no requieren una base PostgreSQL instalada manualmente ni dependen de `localhost`.
+Las pruebas de integración usan PostgreSQL mediante Testcontainers, por lo que Docker debe estar disponible. No dependen de una base local preexistente.
 
-## CI/CD y registry
+## Configuración
 
-El proyecto usa GitHub Actions para validar, publicar imagenes y disparar deploys controlados.
+La configuración se divide por perfiles:
 
-- `.github/workflows/ci.yml`: corre en Pull Requests hacia `develop` y `main`, y tambien por `workflow_dispatch`. Ejecuta tests, genera el package, valida Docker Compose y construye la imagen local sin publicarla.
-- `.github/workflows/docker-publish.yml`: corre en push a `develop` y `main`, y tambien por `workflow_dispatch`. Ejecuta tests, construye la imagen y publica en GHCR.
-- `.github/workflows/release.yml`: corre al publicar tags `vX.Y.Z`. Valida semver, publica la imagen versionada en GHCR, crea una GitHub Release y dispara Render con `imgURL`.
-- `.github/workflows/render-deploy.yml`: deploy manual a Render. Publica una imagen `render-manual-<short-sha>` y la envia al deploy hook.
+- `dev`: PostgreSQL local, creación automática del esquema y carga de datos de ejemplo.
+- `render`: conexión mediante variables de entorno, sin carga automática de datos.
+- `test`: PostgreSQL efímero administrado por Testcontainers.
 
-Imagen en GitHub Container Registry:
-
-```text
-ghcr.io/chochi1250/promotrack-api
-```
-
-Tags usados:
-
-- `develop` y `develop-<sha>` para integracion.
-- `latest` y `main-<sha>` para `main`.
-- `vX.Y.Z`, `X.Y`, `X` y `sha-<sha>` para releases.
-- `render-manual-<short-sha>` para deploys manuales.
-
-Crear una release versionada, reemplazando `vX.Y.Z` por la version correspondiente:
-
-```powershell
-git tag vX.Y.Z
-git push origin vX.Y.Z
-```
-
-## Deploy en Render
-
-Render despliega una imagen Docker publicada en GHCR. Los workflows de release y deploy manual llaman el deploy hook con el parametro `imgURL`, para que Render use una imagen concreta:
-
-- release formal: `ghcr.io/chochi1250/promotrack-api:vX.Y.Z`
-- deploy manual: `ghcr.io/chochi1250/promotrack-api:render-manual-<short-sha>`
-
-Variables principales para Render:
+Variables requeridas para el perfil `render`:
 
 ```text
 SPRING_PROFILES_ACTIVE=render
 SPRING_DATASOURCE_URL=jdbc:postgresql://<host>:<port>/<database>
 SPRING_DATASOURCE_USERNAME=<usuario>
-SPRING_DATASOURCE_PASSWORD=<password>
+SPRING_DATASOURCE_PASSWORD=<contraseña>
 ```
 
-Render define `PORT` automaticamente; fuera de Render, la API mantiene `8080` como fallback. El perfil `render` usa PostgreSQL por variables de entorno, no carga `data.sql` y no expone el endpoint interno de demo del perfil `dev`.
-
-Para cargar datos de demo en la base PostgreSQL de Render se incluye:
-
-```text
-docs/db/render-seed.sql
-```
-
-Ese script se ejecuta manualmente contra la base de Render cuando se necesita poblar la demo.
+`PORT` es opcional y usa `8080` como valor predeterminado. Los secretos de despliegue y New Relic deben configurarse en el proveedor de ejecución o en GitHub Actions; no se almacenan en el repositorio.
 
 ## Observabilidad
 
-Actuator expone una lista acotada de endpoints:
+Actuator expone únicamente `health`, `info`, `metrics` y `prometheus`. Docker Compose configura Prometheus y aprovisiona el datasource y el dashboard de Grafana incluidos en `monitoring/`.
 
-- `GET /actuator/health`
-- `GET /actuator/info`
-- `GET /actuator/metrics`
-- `GET /actuator/prometheus`
-
-Prometheus scrapea la API dentro de Docker Compose usando `api:8080`, y Grafana carga automaticamente el datasource y el dashboard versionado desde `monitoring/grafana/`.
-
-Para generar trafico local:
+Para generar tráfico de prueba local:
 
 ```powershell
 .\scripts\simulate-traffic.ps1
 ```
 
-New Relic APM se usa para observar la app desplegada en Render. La imagen Docker incluye el Java Agent en `/opt/newrelic/newrelic.jar`, pero no lo activa por defecto. En Render se habilita con:
+La configuración de New Relic y las instrucciones de diagnóstico están documentadas en [docs/monitoring.md](docs/monitoring.md).
+
+## CI/CD
+
+Los workflows de GitHub Actions cubren:
+
+- validación de pull requests con tests, package y build de Docker;
+- publicación de imágenes de `develop` y `main` en GHCR;
+- releases versionadas con tags `vX.Y.Z`;
+- despliegue manual o asociado a una release en Render.
+
+Imagen publicada: `ghcr.io/chochi1250/promotrack-api`.
+
+## Estructura
 
 ```text
-NEW_RELIC_LICENSE_KEY=<secret>
-NEW_RELIC_APP_NAME=PromoTrack API Render
-NEW_RELIC_LOG_FILE_NAME=STDOUT
-JAVA_TOOL_OPTIONS=-javaagent:/opt/newrelic/newrelic.jar
+.github/workflows/   Integración continua, publicación y despliegue
+docs/                Documentación técnica y datos opcionales de ejemplo
+monitoring/          Configuración de Prometheus y Grafana
+scripts/             Utilidades de desarrollo y observabilidad
+src/main/            Código y configuración de la aplicación
+src/test/            Pruebas unitarias y de integración
 ```
 
-Para generar trafico seguro contra Render:
+## Alcance del prototipo
 
-```powershell
-.\scripts\simulate-traffic.ps1 -BaseUrl https://<tu-servicio>.onrender.com -RenderSafe -Rounds 20
-```
+La API no implementa autenticación ni autorización. El esquema de producción se administra con Hibernate (`ddl-auto=update`) y no incluye migraciones versionadas; ambas decisiones deben revisarse antes de usar el proyecto en un entorno productivo.
 
-La documentacion tecnica de observabilidad esta en `docs/monitoring.md`.
-
-## Estructura breve del repo
-
-```text
-.github/workflows/       Workflows de CI, publicacion, release y deploy manual
-docs/                    Documentacion tecnica y scripts SQL de apoyo
-monitoring/              Prometheus, Grafana provisioning y dashboard
-scripts/                 Scripts auxiliares para generar trafico
-src/main/java/           Codigo fuente de la API
-src/main/resources/      Configuracion por perfil y datos locales
-src/test/                Tests automatizados
-Dockerfile               Imagen multi-stage de la aplicacion
-docker-compose.yml       Entorno local completo
-pom.xml                  Configuracion Maven
-```
-
-## Variables de entorno principales
-
-Aplicacion:
-
-- `SPRING_PROFILES_ACTIVE`
-- `SPRING_DATASOURCE_URL`
-- `SPRING_DATASOURCE_USERNAME`
-- `SPRING_DATASOURCE_PASSWORD`
-- `PORT`
-
-Render deploy:
-
-- `RENDER_DEPLOY_HOOK_URL`
-
-New Relic:
-
-- `NEW_RELIC_LICENSE_KEY`
-- `NEW_RELIC_APP_NAME`
-- `NEW_RELIC_LOG_FILE_NAME`
-- `JAVA_TOOL_OPTIONS`
+## Proximos pasos
+- Adaptar Docker para que corra en entornos multiplataforma ( Amd, intel, en entornos mas viejos, asegurarme que corra en distribuciones de linux... etc )
+- Agregar Terraform junto a una mejora significativa para la entrega final
+- Escalar API y agregarle una interfaz grafica

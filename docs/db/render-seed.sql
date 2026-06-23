@@ -1,6 +1,5 @@
--- Demo data for the Render PostgreSQL database.
--- Run this script manually when the Render database needs demo records.
--- It is idempotent at the demo-data level and does not require fixed IDs.
+-- Optional seed data for the Render PostgreSQL database.
+-- Idempotent at the sample-data level; fixed IDs are not required.
 
 INSERT INTO supermarkets (name, description, website, country, active, created_at, updated_at)
 SELECT 'Carrefour Argentina',

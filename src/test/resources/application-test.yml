@@ -6,7 +6,6 @@ spring:
     password: test
 
   jpa:
-    database-platform: org.hibernate.dialect.PostgreSQLDialect
     hibernate:
       ddl-auto: create-drop
     defer-datasource-initialization: true

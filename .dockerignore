@@ -1,6 +1,12 @@
 .git
+.github/
 .gitignore
 .gitattributes
+
+docs/
+monitoring/
+scripts/
+docker-compose.yml
 
 target/
 build/
@@ -33,4 +39,5 @@ logs/
 .sts4-cache/
 
 HELP.md
+Context.md
 README.md
